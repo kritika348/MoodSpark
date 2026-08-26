@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>MoodMaker ✨</title>
+
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+
+  <body>
+    <div class="blob blob-one"></div>
+    <div class="blob blob-two"></div>
+
+    <main class="container">
+      <!-- HEADER -->
+
+      <header>
+        <div class="logo">✨ MoodMaker</div>
+
+        <p>Your mood → A tiny creative adventure</p>
+      </header>
+
+      <!-- MOOD SCREEN -->
+
+      <section id="moodSection" class="card">
+        <div class="small-title">STEP 01</div>
+
+        <h1>What's your mood today?</h1>
+
+        <p class="subtitle">Pick one. We'll create something just for you.</p>
+
+        <div class="mood-grid">
+          <button class="mood-card" data-mood="Happy">
+            <span class="emoji">😄</span>
+
+            <span>Happy</span>
+          </button>
+
+          <button class="mood-card" data-mood="Bored">
+            <span class="emoji">😐</span>
+
+            <span>Bored</span>
+          </button>
+
+          <button class="mood-card" data-mood="Sad">
+            <span class="emoji">😔</span>
+
+            <span>Sad</span>
+          </button>
+
+          <button class="mood-card" data-mood="Angry">
+            <span class="emoji">😡</span>
+
+            <span>Angry</span>
+          </button>
+
+          <button class="mood-card" data-mood="Stressed">
+            <span class="emoji">😰</span>
+
+            <span>Stressed</span>
+          </button>
+
+          <button class="mood-card" data-mood="Tired">
+            <span class="emoji">😴</span>
+
+            <span>Tired</span>
+          </button>
+
+          <button class="mood-card" data-mood="Excited">
+            <span class="emoji">🤩</span>
+
+            <span>Excited</span>
+          </button>
+
+          <button class="mood-card" data-mood="Curious">
+            <span class="emoji">🤔</span>
+
+            <span>Curious</span>
+          </button>
+        </div>
+
+        <button id="createBtn" class="primary-btn">
+          Create My Challenge
+          <span>→</span>
+        </button>
+      </section>
+
+      <!-- LOADING -->
+
+      <section id="loading" class="loading hidden">
+        <div class="loader">✨</div>
+
+        <h2>Creating your challenge...</h2>
+
+        <p>MoodMaker is thinking of something fun 🤖</p>
+      </section>
+
+      <!-- CHALLENGE -->
+
+      <section id="challengeSection" class="card challenge-card hidden">
+        <div class="mission-badge">🎯 YOUR MINI MISSION</div>
+
+        <div class="challenge-icon">✨</div>
+
+        <h1>Your Creative Challenge</h1>
+
+        <div id="challengeText" class="challenge-text"></div>
+
+        <!-- SUBMISSION -->
+
+        <div id="submissionArea">
+          <h3>🎨 Complete your challenge</h3>
+
+          <!-- TEXT -->
+
+          <div id="textSubmission">
+            <textarea id="submission" placeholder="Write your answer here...">
+            </textarea>
+          </div>
+
+          <!-- DRAWING -->
+
+          <div id="drawingSubmission" class="hidden">
+            <div class="canvas-header">
+              <span> 🎨 Your Creative Canvas </span>
+
+              <span id="drawingStatus"> Draw something! </span>
+            </div>
+
+            <div class="canvas-wrapper">
+              <canvas id="drawingCanvas"> </canvas>
+            </div>
+
+            <div class="canvas-tools">
+              <button id="clearCanvas">🧹 Clear</button>
+
+              <button id="undoCanvas">↩️ Undo</button>
+            </div>
+
+            <p class="canvas-hint">🖱️ Draw with your mouse or finger</p>
+          </div>
+        </div>
+
+        <!-- BUTTONS -->
+
+        <div class="buttons">
+          <button id="submitBtn" class="submit-btn">✅ Submit Challenge</button>
+
+          <button id="anotherBtn" class="another-btn">
+            🔄 Another Challenge
+          </button>
+        </div>
+
+        <!-- FEEDBACK -->
+
+        <div id="feedback" class="feedback hidden">
+          <div class="feedback-icon">🎉</div>
+
+          <div>
+            <h3>MoodMaker says...</h3>
+
+            <p id="feedbackText"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  </body>
+</html>

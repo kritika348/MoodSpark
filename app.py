@@ -1,35 +1,65 @@
 from flask import Flask, render_template, request, jsonify
 import requests
+import os
 
 app = Flask(__name__)
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+# =========================
+# OLLAMA CLOUD SETTINGS
+# =========================
+
+OLLAMA_URL = "https://ollama.com/api/generate"
 MODEL = "llama3.2"
 
-# Store challenges during the current session
+# API key Render Environment Variable se aayegi
+OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
+
+# Store challenges during current session
 previous_challenges = []
 
 
+# =========================
+# OLLAMA AI FUNCTION
+# =========================
+
 def ask_ollama(prompt):
+
+    if not OLLAMA_API_KEY:
+        raise Exception("OLLAMA_API_KEY is not configured on Render.")
 
     response = requests.post(
         OLLAMA_URL,
+        headers={
+            "Authorization": f"Bearer {OLLAMA_API_KEY}",
+            "Content-Type": "application/json"
+        },
         json={
             "model": MODEL,
             "prompt": prompt,
             "stream": False
-        }
+        },
+        timeout=120
     )
 
     response.raise_for_status()
 
-    return response.json()["response"]
+    result = response.json()
 
+    return result["response"]
+
+
+# =========================
+# HOME PAGE
+# =========================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
+# =========================
+# GENERATE CHALLENGE
+# =========================
 
 @app.route("/generate", methods=["POST"])
 def generate():
@@ -99,14 +129,28 @@ SUBMISSION:
 image or text
 """
 
-    challenge = ask_ollama(prompt)
+    try:
+        challenge = ask_ollama(prompt)
 
-    previous_challenges.append(challenge)
+        previous_challenges.append(challenge)
 
-    return jsonify({
-        "challenge": challenge
-    })
+        return jsonify({
+            "challenge": challenge
+        })
 
+    except Exception as e:
+
+        print("Ollama Error:", str(e))
+
+        return jsonify({
+            "error": "Unable to connect to MoodSpark AI.",
+            "details": str(e)
+        }), 500
+
+
+# =========================
+# SUBMIT CHALLENGE
+# =========================
 
 @app.route("/submit", methods=["POST"])
 def submit():
@@ -138,12 +182,32 @@ Rules:
 - Do not judge harshly.
 """
 
-    feedback = ask_ollama(feedback_prompt)
+    try:
+        feedback = ask_ollama(feedback_prompt)
 
-    return jsonify({
-        "feedback": feedback
-    })
+        return jsonify({
+            "feedback": feedback
+        })
 
+    except Exception as e:
+
+        print("Ollama Error:", str(e))
+
+        return jsonify({
+            "error": "Unable to connect to MoodSpark AI.",
+            "details": str(e)
+        }), 500
+
+
+# =========================
+# START SERVER
+# =========================
 
 if __name__ == "__main__":
-    app.run(debug=True)
+
+    port = int(os.environ.get("PORT", 5000))
+
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )

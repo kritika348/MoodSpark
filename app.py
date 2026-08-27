@@ -9,7 +9,7 @@ app = Flask(__name__)
 # =========================
 
 OLLAMA_URL = "https://ollama.com/api/generate"
-MODEL = "llama3.2"
+MODEL = "gpt-oss:120b"
 
 # API key Render Environment Variable se aayegi
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")

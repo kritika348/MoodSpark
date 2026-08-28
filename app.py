@@ -9,7 +9,7 @@ app = Flask(__name__)
 # ==================================================
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "llama3.2"
+MODEL = "gpt-oss:120b"
 
 previous_challenges = []
 

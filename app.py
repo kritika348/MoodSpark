@@ -9,7 +9,7 @@ app = Flask(__name__)
 # OLLAMA CLOUD
 # =========================
 
-OLLAMA_URL = "https://ollama.com/api/generate"
+OLLAMA_URL = "https://ollama.com/api/chat"
 
 # Vision model: supports text + images
 MODEL = "gemma3:4b"

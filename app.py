@@ -4,55 +4,53 @@ import os
 
 app = Flask(__name__)
 
-# ==========================================
-# OLLAMA CLOUD SETTINGS
-# ==========================================
+# =====================================
+# OLLAMA CLOUD
+# =====================================
 
 OLLAMA_URL = "https://ollama.com/api/chat"
-MODEL = "gemma3:4b"
+
+# Cloud model
+MODEL = "gpt-oss:120b"
 
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 
+# Store previous challenges
 previous_challenges = []
 
 
-# ==========================================
-# OLLAMA API
-# ==========================================
+# =====================================
+# ASK OLLAMA
+# =====================================
 
-def ask_ollama(prompt, image_base64=None):
+def ask_ollama(prompt):
 
     if not OLLAMA_API_KEY:
-        raise Exception("OLLAMA_API_KEY is not set on Render.")
-
-    message = {
-        "role": "user",
-        "content": prompt
-    }
-
-    # Add image for drawing/photo submissions
-    if image_base64:
-
-        if "," in image_base64:
-            image_base64 = image_base64.split(",", 1)[1]
-
-        message["images"] = [image_base64]
+        raise Exception("OLLAMA_API_KEY is missing in Render.")
 
     payload = {
         "model": MODEL,
-        "messages": [message],
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
         "stream": False
     }
 
     response = requests.post(
         OLLAMA_URL,
         headers={
-            "Authorization": f"Bearer {OLLAMA_API_KEY}",
+            "Authorization": "Bearer " + OLLAMA_API_KEY,
             "Content-Type": "application/json"
         },
         json=payload,
-        timeout=180
+        timeout=120
     )
+
+    print("Ollama status:", response.status_code)
+    print("Ollama response:", response.text)
 
     response.raise_for_status()
 
@@ -61,104 +59,84 @@ def ask_ollama(prompt, image_base64=None):
     return result["message"]["content"]
 
 
-# ==========================================
-# HOME PAGE
-# ==========================================
+# =====================================
+# HOME
+# =====================================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ==========================================
+# =====================================
 # GENERATE CHALLENGE
-# ==========================================
+# =====================================
 
 @app.route("/generate", methods=["POST"])
 def generate():
 
-    try:
+    data = request.get_json()
+    mood = data.get("mood", "")
 
-        data = request.get_json()
+    previous = "\n".join(previous_challenges[-10:])
 
-        if not data:
-            return jsonify({
-                "error": "No data received."
-            }), 400
+    prompt = f"""
+You are MoodSpark, a fun creative challenge generator.
 
-        mood = data.get("mood", "").strip()
-
-        if not mood:
-            return jsonify({
-                "error": "Please select a mood."
-            }), 400
-
-        previous = "\n".join(
-            previous_challenges[-10:]
-        )
-
-        prompt = f"""
-You are MoodSpark, a fun creative challenge AI.
-
-User mood: {mood}
+The user's mood is: {mood}
 
 Create ONE tiny creative challenge.
 
 RULES:
 
-1. Use VERY SIMPLE English.
-2. Keep the challenge SHORT.
-3. Maximum 1 or 2 sentences.
-4. It must take only 2-5 minutes.
-5. Make it fun, playful and creative.
-6. Make the user WANT to do it.
-7. Do not give motivational advice.
-8. Do not give therapy advice.
-9. Do not give exercise challenges.
-10. Give only ONE challenge.
-11. Do not repeat previous challenges.
+- Use very simple English.
+- Maximum 2 short sentences.
+- It must take only 2-5 minutes.
+- Make it fun and interesting.
+- Make the user want to try it.
+- Do NOT give motivational advice.
+- Do NOT give therapy advice.
+- Do NOT give exercise challenges.
+- Do NOT make it boring.
+- Make every challenge different.
+- Do not repeat previous challenges.
 
-Choose ONE type:
+You can create challenges like:
 
-drawing
-craft
-photo
-writing
-puzzle
-brain
-creative
+DRAWING:
+Draw a tiny monster using only circles.
 
-Examples:
+CRAFT:
+Make a paper butterfly using one small piece of paper.
 
-TYPE: drawing
-CHALLENGE: Draw a tiny monster using only circles and triangles.
-TIME: 3 minutes
+PHOTO:
+Take a funny photo of something that looks like a face.
 
-TYPE: craft
-CHALLENGE: Make a tiny paper animal using one sheet of paper.
-TIME: 5 minutes
+WRITING:
+Write a 3-line funny story about your shoe.
 
-TYPE: photo
-CHALLENGE: Find something around you that looks like a face and take a photo.
-TIME: 3 minutes
+BRAIN:
+Find 5 things around you that start with S.
 
-TYPE: writing
-CHALLENGE: Write a funny 3-line story about your shoe.
-TIME: 3 minutes
+IMAGINATION:
+Invent a new ice cream flavour and give it a funny name.
 
-TYPE: puzzle
-CHALLENGE: Find 5 things around you that start with S.
-TIME: 3 minutes
+OBSERVATION:
+Find the smallest object near you and describe it.
+
+Return ONLY:
+
+TYPE: drawing / craft / photo / writing / brain / creative
+
+CHALLENGE: one short challenge
+
+TIME: 2-5 minutes
 
 Previous challenges:
 {previous}
-
-Return ONLY this format:
-
-TYPE: drawing/craft/photo/writing/puzzle/brain/creative
-CHALLENGE: short challenge
-TIME: 2-5 minutes
 """
+
+    try:
 
         challenge = ask_ollama(prompt)
 
@@ -173,96 +151,24 @@ TIME: 2-5 minutes
         print("OLLAMA GENERATE ERROR:", str(e))
 
         return jsonify({
-            "error": "Could not create challenge.",
-            "details": str(e)
+            "error": str(e)
         }), 500
 
 
-# ==========================================
+# =====================================
 # SUBMIT CHALLENGE
-# ==========================================
+# =====================================
 
 @app.route("/submit", methods=["POST"])
 def submit():
 
-    try:
+    data = request.get_json()
 
-        data = request.get_json()
+    mood = data.get("mood", "")
+    challenge = data.get("challenge", "")
+    submission = data.get("submission", "")
 
-        if not data:
-            return jsonify({
-                "error": "No submission data received."
-            }), 400
-
-        mood = data.get("mood", "")
-        challenge = data.get("challenge", "")
-        submission = data.get("submission", "")
-        submission_type = data.get(
-            "submission_type",
-            "text"
-        )
-
-        if not submission:
-            return jsonify({
-                "error": "Please complete the challenge first."
-            }), 400
-
-        # ======================================
-        # DRAWING / IMAGE SUBMISSION
-        # ======================================
-
-        if submission_type in ["drawing", "image"]:
-
-            feedback_prompt = f"""
-You are the friendly judge of MoodSpark.
-
-User mood:
-{mood}
-
-Challenge:
-{challenge}
-
-The user submitted an image of their completed challenge.
-
-Look carefully at the image.
-
-Judge the submission based on:
-
-- Effort
-- Creativity
-- How well it matches the challenge
-- Overall idea
-
-Give a genuine score from 1 to 10.
-
-Do NOT automatically give 10/10.
-
-Mention something specific you noticed in the image.
-
-Be positive, friendly and impressive.
-
-Maximum 2 sentences.
-
-Return ONLY:
-
-SCORE: X/10
-
-COMMENT:
-Your personalized comment.
-"""
-
-            feedback = ask_ollama(
-                feedback_prompt,
-                image_base64=submission
-            )
-
-        # ======================================
-        # TEXT SUBMISSION
-        # ======================================
-
-        else:
-
-            feedback_prompt = f"""
+    prompt = f"""
 You are the friendly judge of MoodSpark.
 
 User mood:
@@ -274,63 +180,37 @@ Challenge:
 User's answer:
 {submission}
 
-Judge the answer based on:
+Give friendly feedback.
 
-- Effort
-- Creativity
-- How well it completes the challenge
+Rules:
 
-Give a genuine score from 1 to 10.
+- Give a score from 1 to 10.
+- Be positive.
+- Mention something specific about their answer.
+- Do not be harsh.
+- Maximum 2 short sentences.
 
-Do NOT automatically give 10/10.
-
-Mention something specific about the user's answer.
-
-Be positive, friendly and impressive.
-
-Maximum 2 sentences.
-
-Return ONLY:
+Return exactly:
 
 SCORE: X/10
 
-COMMENT:
-Your personalized comment.
+COMMENT: Your short friendly comment.
 """
 
-            feedback = ask_ollama(
-                feedback_prompt
-            )
+    try:
 
-        # ======================================
-        # EXTRACT SCORE
-        # ======================================
+        feedback = ask_ollama(prompt)
 
         score = "10/10"
+        comment = feedback
 
         for line in feedback.splitlines():
 
-            if "SCORE:" in line.upper():
+            if line.upper().startswith("SCORE:"):
+                score = line.split(":", 1)[1].strip()
 
-                score = line.split(
-                    ":",
-                    1
-                )[1].strip()
-
-                break
-
-        # ======================================
-        # EXTRACT COMMENT
-        # ======================================
-
-        comment = feedback
-
-        if "COMMENT:" in feedback:
-
-            comment = feedback.split(
-                "COMMENT:",
-                1
-            )[1].strip()
+            if line.upper().startswith("COMMENT:"):
+                comment = line.split(":", 1)[1].strip()
 
         return jsonify({
             "score": score,
@@ -342,23 +222,17 @@ Your personalized comment.
         print("OLLAMA SUBMIT ERROR:", str(e))
 
         return jsonify({
-            "error": "Could not evaluate submission.",
-            "details": str(e)
+            "error": str(e)
         }), 500
 
 
-# ==========================================
+# =====================================
 # START SERVER
-# ==========================================
+# =====================================
 
 if __name__ == "__main__":
 
-    port = int(
-        os.environ.get(
-            "PORT",
-            5000
-        )
-    )
+    port = int(os.environ.get("PORT", 5000))
 
     app.run(
         host="0.0.0.0",

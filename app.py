@@ -4,127 +4,149 @@ import os
 
 app = Flask(__name__)
 
-# ==================================================
-# OLLAMA SETTINGS
-# ==================================================
+# =========================================================
+# OLLAMA CLOUD SETTINGS
+# =========================================================
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_URL = "https://ollama.com/api/chat"
 MODEL = "gpt-oss:120b"
 
+OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY")
+
+# Store recent challenges so AI tries not to repeat them
 previous_challenges = []
 
 
-# ==================================================
-# ASK OLLAMA
-# ==================================================
+# =========================================================
+# OLLAMA AI FUNCTION
+# =========================================================
 
-def ask_ollama(prompt, image_base64=None):
+def ask_ollama(prompt):
 
-    payload = {
+    if not OLLAMA_API_KEY:
+        raise Exception(
+            "OLLAMA_API_KEY is missing. "
+            "Add it in Render Environment Variables."
+        )
+
+    headers = {
+        "Authorization": f"Bearer {OLLAMA_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
         "model": MODEL,
-        "prompt": prompt,
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
         "stream": False
     }
 
-    # Drawing image
-    if image_base64:
-        if "," in image_base64:
-            image_base64 = image_base64.split(",", 1)[1]
-
-        payload["images"] = [image_base64]
-
     response = requests.post(
         OLLAMA_URL,
-        json=payload,
-        timeout=180
+        headers=headers,
+        json=data,
+        timeout=120
     )
+
+    print("OLLAMA STATUS:", response.status_code)
+    print("OLLAMA RESPONSE:", response.text)
 
     response.raise_for_status()
 
     result = response.json()
 
-    return result.get("response", "")
+    # Ollama Cloud chat response
+    return result["message"]["content"]
 
 
-# ==================================================
-# HOME
-# ==================================================
+# =========================================================
+# HOME PAGE
+# =========================================================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ==================================================
-# GENERATE CHALLENGE
-# ==================================================
+# =========================================================
+# GENERATE CREATIVE CHALLENGE
+# =========================================================
 
 @app.route("/generate", methods=["POST"])
 def generate():
 
     try:
 
-        data = request.get_json()
-        mood = data.get("mood", "")
+        data = request.get_json(silent=True) or {}
 
-        previous = "\n".join(previous_challenges[-10:])
+        mood = data.get("mood", "happy")
+
+        previous = "\n".join(
+            previous_challenges[-10:]
+        )
 
         prompt = f"""
-You are MoodSpark, a fun creative challenge generator.
+You are MoodSpark, a fun and creative AI challenge generator.
 
-User mood: {mood}
+The user's current mood is:
+{mood}
 
-Create ONE short and fun challenge.
+Create ONE short and interesting mini challenge.
 
-RULES:
+IMPORTANT RULES:
 
-- Use very simple English.
-- Maximum 1 or 2 short sentences.
-- Challenge should take 2-5 minutes.
-- Make it creative and playful.
-- Do NOT give boring motivational advice.
-- Give something people actually want to try.
-- Do not repeat previous challenges.
+1. Use very simple English.
+2. The challenge must take only 2-5 minutes.
+3. Make it playful, creative and fun.
+4. Make the user WANT to do it.
+5. Do not give boring motivational advice.
+6. Do not give therapy advice.
+7. Do not suggest exercise.
+8. Do not repeat previous challenges.
+9. Drawing challenges are allowed.
+10. Writing challenges are allowed.
+11. Puzzle challenges are allowed.
+12. Craft challenges are allowed.
+13. Brain challenges are allowed.
+14. The challenge should be possible with normal things around the user.
 
-You can create these types:
+Possible challenge types:
 
 drawing
 craft
-photo
 writing
 puzzle
 brain
 creative
 
-IMPORTANT:
-If the challenge requires drawing, use TYPE: drawing.
-
 Examples:
 
 TYPE: drawing
-CHALLENGE: Draw a funny cartoon cat wearing sunglasses.
-
-TYPE: drawing
-CHALLENGE: Draw a tiny monster using only circles and triangles.
-
-TYPE: craft
-CHALLENGE: Make a tiny paper animal using one sheet of paper.
-
-TYPE: photo
-CHALLENGE: Find something around you that looks like a face and take a photo.
+CHALLENGE: Draw a funny cartoon monster using only circles and triangles.
+TIME: 2-5 minutes
 
 TYPE: writing
 CHALLENGE: Write a funny 3-line story about your shoe.
+TIME: 2-5 minutes
 
 TYPE: puzzle
 CHALLENGE: Find 5 things around you that start with the letter S.
+TIME: 2-5 minutes
+
+TYPE: creative
+CHALLENGE: Invent a completely useless but funny invention.
+TIME: 2-5 minutes
 
 Previous challenges:
 {previous}
 
-Return ONLY:
+Return ONLY this format:
 
-TYPE: drawing/craft/photo/writing/puzzle/brain/creative
+TYPE: drawing/craft/writing/puzzle/brain/creative
 
 CHALLENGE: your short challenge
 
@@ -135,7 +157,12 @@ TIME: 2-5 minutes
 
         previous_challenges.append(challenge)
 
+        # Keep only recent challenges
+        if len(previous_challenges) > 20:
+            previous_challenges.pop(0)
+
         return jsonify({
+            "success": True,
             "challenge": challenge
         })
 
@@ -144,160 +171,141 @@ TIME: 2-5 minutes
         print("OLLAMA GENERATE ERROR:", str(e))
 
         return jsonify({
+            "success": False,
             "error": str(e)
         }), 500
 
 
-# ==================================================
-# SUBMIT + AI EVALUATION
-# ==================================================
+# =========================================================
+# SUBMIT CHALLENGE + AI EVALUATION
+# =========================================================
 
 @app.route("/submit", methods=["POST"])
 def submit():
 
     try:
 
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
 
         mood = data.get("mood", "")
         challenge = data.get("challenge", "")
         submission = data.get("submission", "")
-        submission_type = data.get("submission_type", "text")
+        submission_type = data.get(
+            "submission_type",
+            "text"
+        )
 
-        # ------------------------------------------
-        # DRAWING
-        # ------------------------------------------
+        if not submission:
 
-        if submission_type == "drawing":
+            return jsonify({
+                "success": False,
+                "error": "Please submit your challenge first."
+            }), 400
 
-            feedback_prompt = f"""
-You are the friendly judge of MoodSpark.
 
-User mood:
+        prompt = f"""
+You are the friendly AI judge of MoodSpark.
+
+USER MOOD:
 {mood}
 
-Challenge:
+CHALLENGE:
 {challenge}
 
-The user completed the challenge by drawing on a canvas.
-
-Look carefully at the drawing.
-
-Evaluate:
-
-1. Did the user attempt the challenge?
-2. Creativity
-3. Effort
-4. How well it matches the challenge
-
-Give a genuine score from 1 to 10.
-
-Be encouraging but honest.
-
-Mention something SPECIFIC you noticed in the drawing.
-
-Keep the comment short and impressive.
-
-Return ONLY:
-
-SCORE: X/10
-COMMENT: Your personalized comment.
-"""
-
-            feedback = ask_ollama(
-                feedback_prompt,
-                image_base64=submission
-            )
-
-        # ------------------------------------------
-        # TEXT
-        # ------------------------------------------
-
-        else:
-
-            feedback_prompt = f"""
-You are the friendly judge of MoodSpark.
-
-User mood:
-{mood}
-
-Challenge:
-{challenge}
-
-User submission:
+USER SUBMISSION:
 {submission}
 
-Evaluate:
+SUBMISSION TYPE:
+{submission_type}
 
-1. Effort
-2. Creativity
-3. How well the challenge was completed
+Evaluate the user's submission.
+
+Consider:
+
+- Effort
+- Creativity
+- How well the challenge was completed
+- Originality
 
 Give a genuine score from 1 to 10.
 
-Be positive but honest.
+IMPORTANT:
 
-Mention something specific about the submission.
+- Do not automatically give 10/10.
+- Do not be unnecessarily harsh.
+- Be encouraging.
+- Mention something specific about the submission.
+- Keep the feedback short.
+- Maximum 2 sentences.
 
-Keep the comment short and impressive.
-
-Return ONLY:
+Return ONLY this format:
 
 SCORE: X/10
-COMMENT: Your personalized comment.
+
+COMMENT: Your short personalized comment.
 """
 
-            feedback = ask_ollama(feedback_prompt)
-
-        # ------------------------------------------
-        # EXTRACT SCORE
-        # ------------------------------------------
+        feedback = ask_ollama(prompt)
 
         score = "8/10"
-
-        for line in feedback.splitlines():
-
-            if "SCORE:" in line.upper():
-
-                score = line.split(":", 1)[1].strip()
-
-                break
-
-        # ------------------------------------------
-        # EXTRACT COMMENT
-        # ------------------------------------------
-
         comment = feedback
 
-        if "COMMENT:" in feedback:
+        # Extract score and comment
+        for line in feedback.splitlines():
 
-            comment = feedback.split(
-                "COMMENT:",
-                1
-            )[1].strip()
+            line_clean = line.strip()
+
+            if line_clean.upper().startswith("SCORE:"):
+
+                score = line_clean.split(
+                    ":",
+                    1
+                )[1].strip()
+
+            elif line_clean.upper().startswith("COMMENT:"):
+
+                comment = line_clean.split(
+                    ":",
+                    1
+                )[1].strip()
+
 
         return jsonify({
-
+            "success": True,
             "score": score,
-
             "feedback": comment
-
         })
 
     except Exception as e:
 
-        print("OLLAMA EVALUATION ERROR:", str(e))
+        print(
+            "OLLAMA EVALUATION ERROR:",
+            str(e)
+        )
 
         return jsonify({
-
+            "success": False,
             "error": str(e)
-
         }), 500
 
 
-# ==================================================
+# =========================================================
+# HEALTH CHECK
+# =========================================================
+
+@app.route("/health")
+def health():
+
+    return jsonify({
+        "status": "ok",
+        "model": MODEL,
+        "message": "MoodSpark AI is running!"
+    })
+
+
+# =========================================================
 # START SERVER
-# ==================================================
+# =========================================================
 
 if __name__ == "__main__":
 

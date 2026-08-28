@@ -1,11 +1,11 @@
 <!doctype html>
+
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>MoodMaker ✨</title>
+    <title>MoodSpark ✨</title>
 
     <link
       rel="stylesheet"
@@ -14,73 +14,69 @@
   </head>
 
   <body>
+    <!-- Background -->
+
     <div class="blob blob-one"></div>
     <div class="blob blob-two"></div>
 
     <main class="container">
+      ```
       <!-- HEADER -->
-
       <header>
-        <div class="logo">✨ MoodMaker</div>
+        <div class="logo">✨ MoodSpark</div>
 
         <p>Your mood → A tiny creative adventure</p>
       </header>
 
-      <!-- MOOD SCREEN -->
+      <!-- ============================= -->
+      <!-- MOOD SELECTION -->
+      <!-- ============================= -->
 
       <section id="moodSection" class="card">
         <div class="small-title">STEP 01</div>
 
         <h1>What's your mood today?</h1>
 
-        <p class="subtitle">Pick one. We'll create something just for you.</p>
+        <p class="subtitle">Pick one. We'll create something fun for you.</p>
 
         <div class="mood-grid">
           <button class="mood-card" data-mood="Happy">
             <span class="emoji">😄</span>
-
             <span>Happy</span>
           </button>
 
           <button class="mood-card" data-mood="Bored">
             <span class="emoji">😐</span>
-
             <span>Bored</span>
           </button>
 
           <button class="mood-card" data-mood="Sad">
             <span class="emoji">😔</span>
-
             <span>Sad</span>
           </button>
 
           <button class="mood-card" data-mood="Angry">
             <span class="emoji">😡</span>
-
             <span>Angry</span>
           </button>
 
           <button class="mood-card" data-mood="Stressed">
             <span class="emoji">😰</span>
-
             <span>Stressed</span>
           </button>
 
           <button class="mood-card" data-mood="Tired">
             <span class="emoji">😴</span>
-
             <span>Tired</span>
           </button>
 
           <button class="mood-card" data-mood="Excited">
             <span class="emoji">🤩</span>
-
             <span>Excited</span>
           </button>
 
           <button class="mood-card" data-mood="Curious">
             <span class="emoji">🤔</span>
-
             <span>Curious</span>
           </button>
         </div>
@@ -91,17 +87,21 @@
         </button>
       </section>
 
+      <!-- ============================= -->
       <!-- LOADING -->
+      <!-- ============================= -->
 
       <section id="loading" class="loading hidden">
         <div class="loader">✨</div>
 
         <h2>Creating your challenge...</h2>
 
-        <p>MoodMaker is thinking of something fun 🤖</p>
+        <p>MoodSpark is thinking of something fun 🤖</p>
       </section>
 
+      <!-- ============================= -->
       <!-- CHALLENGE -->
+      <!-- ============================= -->
 
       <section id="challengeSection" class="card challenge-card hidden">
         <div class="mission-badge">🎯 YOUR MINI MISSION</div>
@@ -110,21 +110,58 @@
 
         <h1>Your Creative Challenge</h1>
 
+        <!-- AI GENERATED CHALLENGE -->
         <div id="challengeText" class="challenge-text"></div>
 
-        <!-- SUBMISSION -->
+        <!-- ============================= -->
+        <!-- SUBMISSION AREA -->
+        <!-- ============================= -->
 
         <div id="submissionArea">
           <h3>🎨 Complete your challenge</h3>
 
-          <!-- TEXT -->
+          <!-- ============================= -->
+          <!-- TEXT SUBMISSION -->
+          <!-- ============================= -->
 
           <div id="textSubmission">
-            <textarea id="submission" placeholder="Write your answer here...">
-            </textarea>
+            <textarea
+              id="submission"
+              placeholder="Write your answer here..."
+            ></textarea>
           </div>
 
-          <!-- DRAWING -->
+          <!-- ============================= -->
+          <!-- IMAGE UPLOAD -->
+          <!-- ============================= -->
+
+          <div id="imageSubmission" class="hidden">
+            <div class="upload-box">
+              <div class="upload-icon">📸</div>
+
+              <h3>Show us what you created!</h3>
+
+              <p>Upload a photo of your art, craft or creation.</p>
+
+              <label for="imageUpload" class="upload-btn">
+                📷 Choose Image
+              </label>
+
+              <input type="file" id="imageUpload" accept="image/*" hidden />
+
+              <!-- Image Preview -->
+
+              <div id="imagePreviewContainer" class="hidden">
+                <img id="imagePreview" src="" alt="Your submission" />
+
+                <button type="button" id="removeImage">❌ Remove Image</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============================= -->
+          <!-- DRAWING CANVAS -->
+          <!-- ============================= -->
 
           <div id="drawingSubmission" class="hidden">
             <div class="canvas-header">
@@ -134,20 +171,22 @@
             </div>
 
             <div class="canvas-wrapper">
-              <canvas id="drawingCanvas"> </canvas>
+              <canvas id="drawingCanvas"></canvas>
             </div>
 
             <div class="canvas-tools">
-              <button id="clearCanvas">🧹 Clear</button>
+              <button type="button" id="clearCanvas">🧹 Clear</button>
 
-              <button id="undoCanvas">↩️ Undo</button>
+              <button type="button" id="undoCanvas">↩️ Undo</button>
             </div>
 
             <p class="canvas-hint">🖱️ Draw with your mouse or finger</p>
           </div>
         </div>
 
+        <!-- ============================= -->
         <!-- BUTTONS -->
+        <!-- ============================= -->
 
         <div class="buttons">
           <button id="submitBtn" class="submit-btn">✅ Submit Challenge</button>
@@ -157,19 +196,36 @@
           </button>
         </div>
 
-        <!-- FEEDBACK -->
+        <!-- ============================= -->
+        <!-- AI FEEDBACK -->
+        <!-- ============================= -->
 
         <div id="feedback" class="feedback hidden">
           <div class="feedback-icon">🎉</div>
 
           <div>
-            <h3>MoodMaker says...</h3>
+            <h3>MoodSpark AI says...</h3>
 
             <p id="feedbackText"></p>
           </div>
         </div>
+
+        <!-- ============================= -->
+        <!-- AI RATING -->
+        <!-- ============================= -->
+
+        <div id="rating" class="rating hidden">
+          <div class="rating-title">⭐ Your AI Rating</div>
+
+          <div id="ratingScore" class="rating-score">10/10</div>
+
+          <p id="ratingComment">Amazing creativity! 🎨</p>
+        </div>
       </section>
+      ```
     </main>
+
+    <!-- JAVASCRIPT -->
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
   </body>

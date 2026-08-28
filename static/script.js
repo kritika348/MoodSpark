@@ -1,9 +1,6 @@
 let selectedMood = "";
-
 let currentChallenge = "";
-
 let drawingHistory = [];
-
 let isDrawing = false;
 
 // =====================================
@@ -29,22 +26,23 @@ moodCards.forEach((card) => {
 // =====================================
 
 const moodSection = document.getElementById("moodSection");
-
 const challengeSection = document.getElementById("challengeSection");
-
 const loading = document.getElementById("loading");
 
 const challengeText = document.getElementById("challengeText");
 
 const textSubmission = document.getElementById("textSubmission");
-
+const imageSubmission = document.getElementById("imageSubmission");
 const drawingSubmission = document.getElementById("drawingSubmission");
 
 const submission = document.getElementById("submission");
 
-const feedback = document.getElementById("feedback");
+const imageUpload = document.getElementById("imageUpload");
+const imagePreview = document.getElementById("imagePreview");
 
+const feedback = document.getElementById("feedback");
 const feedbackText = document.getElementById("feedbackText");
+const scoreText = document.getElementById("scoreText");
 
 const submitBtn = document.getElementById("submitBtn");
 
@@ -53,7 +51,6 @@ const submitBtn = document.getElementById("submitBtn");
 // =====================================
 
 const canvas = document.getElementById("drawingCanvas");
-
 const ctx = canvas.getContext("2d");
 
 function setupCanvas() {
@@ -62,21 +59,16 @@ function setupCanvas() {
   const rect = canvas.getBoundingClientRect();
 
   canvas.width = rect.width * ratio;
-
   canvas.height = rect.height * ratio;
 
-  ctx.scale(ratio, ratio);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
   ctx.fillStyle = "white";
-
   ctx.fillRect(0, 0, rect.width, rect.height);
 
   ctx.lineWidth = 4;
-
   ctx.lineCap = "round";
-
   ctx.lineJoin = "round";
-
   ctx.strokeStyle = "#292333";
 }
 
@@ -89,7 +81,7 @@ window.addEventListener("resize", () => {
 });
 
 // =====================================
-// GET DRAWING POSITION
+// DRAWING POSITION
 // =====================================
 
 function getPosition(event) {
@@ -100,17 +92,14 @@ function getPosition(event) {
 
   if (event.touches) {
     clientX = event.touches[0].clientX;
-
     clientY = event.touches[0].clientY;
   } else {
     clientX = event.clientX;
-
     clientY = event.clientY;
   }
 
   return {
     x: clientX - rect.left,
-
     y: clientY - rect.top,
   };
 }
@@ -129,7 +118,6 @@ function startDrawing(event) {
   const position = getPosition(event);
 
   ctx.beginPath();
-
   ctx.moveTo(position.x, position.y);
 }
 
@@ -138,20 +126,16 @@ function startDrawing(event) {
 // =====================================
 
 function draw(event) {
-  if (!isDrawing) {
-    return;
-  }
+  if (!isDrawing) return;
 
   event.preventDefault();
 
   const position = getPosition(event);
 
   ctx.lineTo(position.x, position.y);
-
   ctx.stroke();
 
   ctx.beginPath();
-
   ctx.moveTo(position.x, position.y);
 
   document.getElementById("drawingStatus").innerText = "✏️ Drawing...";
@@ -162,9 +146,7 @@ function draw(event) {
 // =====================================
 
 function stopDrawing(event) {
-  if (!isDrawing) {
-    return;
-  }
+  if (!isDrawing) return;
 
   event.preventDefault();
 
@@ -176,19 +158,16 @@ function stopDrawing(event) {
 }
 
 // =====================================
-// MOUSE EVENTS
+// MOUSE
 // =====================================
 
 canvas.addEventListener("mousedown", startDrawing);
-
 canvas.addEventListener("mousemove", draw);
-
 canvas.addEventListener("mouseup", stopDrawing);
-
 canvas.addEventListener("mouseleave", stopDrawing);
 
 // =====================================
-// TOUCH EVENTS
+// TOUCH
 // =====================================
 
 canvas.addEventListener("touchstart", startDrawing, { passive: false });
@@ -198,11 +177,11 @@ canvas.addEventListener("touchmove", draw, { passive: false });
 canvas.addEventListener("touchend", stopDrawing, { passive: false });
 
 // =====================================
-// SAVE CANVAS
+// SAVE DRAWING
 // =====================================
 
 function saveCanvas() {
-  drawingHistory.push(canvas.toDataURL());
+  drawingHistory.push(canvas.toDataURL("image/png"));
 
   if (drawingHistory.length > 20) {
     drawingHistory.shift();
@@ -210,7 +189,7 @@ function saveCanvas() {
 }
 
 // =====================================
-// RESTORE CANVAS
+// RESTORE DRAWING
 // =====================================
 
 function restoreCanvas(data) {
@@ -228,7 +207,7 @@ function restoreCanvas(data) {
 }
 
 // =====================================
-// CLEAR CANVAS
+// CLEAR
 // =====================================
 
 document.getElementById("clearCanvas").addEventListener("click", () => {
@@ -260,23 +239,91 @@ document.getElementById("undoCanvas").addEventListener("click", () => {
 });
 
 // =====================================
+// IMAGE UPLOAD
+// =====================================
+
+imageUpload.addEventListener("change", () => {
+  const file = imageUpload.files[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = (event) => {
+    imagePreview.src = event.target.result;
+
+    imagePreview.classList.remove("hidden");
+  };
+
+  reader.readAsDataURL(file);
+});
+
+// =====================================
+// DETECT CHALLENGE TYPE
+// =====================================
+
+function getChallengeType(challenge) {
+  const firstLine = challenge.split("\n")[0].toLowerCase();
+
+  if (firstLine.includes("drawing")) {
+    return "drawing";
+  }
+
+  if (firstLine.includes("craft")) {
+    return "image";
+  }
+
+  if (firstLine.includes("photo")) {
+    return "image";
+  }
+
+  if (firstLine.includes("writing")) {
+    return "text";
+  }
+
+  if (firstLine.includes("puzzle")) {
+    return "text";
+  }
+
+  if (firstLine.includes("brain")) {
+    return "text";
+  }
+
+  if (firstLine.includes("creative")) {
+    // Creative challenges usually involve making something
+    return "image";
+  }
+
+  return "text";
+}
+
+// =====================================
 // SHOW SUBMISSION TYPE
 // =====================================
 
 function showSubmissionType(challenge) {
-  const lower = challenge.toLowerCase();
+  const type = getChallengeType(challenge);
 
-  const isDrawing = lower.includes("type: drawing");
+  textSubmission.classList.add("hidden");
+  drawingSubmission.classList.add("hidden");
+  imageSubmission.classList.add("hidden");
 
-  if (isDrawing) {
-    textSubmission.classList.add("hidden");
-
+  // DRAWING
+  if (type === "drawing") {
     drawingSubmission.classList.remove("hidden");
 
-    setTimeout(setupCanvas, 100);
-  } else {
-    drawingSubmission.classList.add("hidden");
+    setTimeout(() => {
+      setupCanvas();
+    }, 100);
+  }
 
+  // IMAGE
+  else if (type === "image") {
+    imageSubmission.classList.remove("hidden");
+  }
+
+  // TEXT
+  else {
     textSubmission.classList.remove("hidden");
   }
 }
@@ -329,7 +376,7 @@ async function generateChallenge() {
 
     moodSection.classList.remove("hidden");
 
-    alert("Could not connect to Ollama. Make sure Ollama is running.");
+    alert("Could not create your challenge. Please try again.");
   }
 }
 
@@ -353,10 +400,11 @@ document.getElementById("createBtn").addEventListener("click", () => {
 
 submitBtn.addEventListener("click", async () => {
   let submissionData = "";
-
   let submissionType = "text";
 
+  // =========================
   // DRAWING
+  // =========================
 
   if (!drawingSubmission.classList.contains("hidden")) {
     submissionType = "drawing";
@@ -364,9 +412,28 @@ submitBtn.addEventListener("click", async () => {
     submissionData = canvas.toDataURL("image/png");
   }
 
+  // =========================
+  // IMAGE
+  // =========================
+  else if (!imageSubmission.classList.contains("hidden")) {
+    submissionType = "image";
+
+    if (!imageUpload.files || !imageUpload.files[0]) {
+      alert("Please upload your creation first 📸");
+
+      return;
+    }
+
+    submissionData = imagePreview.src;
+  }
+
+  // =========================
   // TEXT
+  // =========================
   else {
     submissionData = submission.value.trim();
+
+    submissionType = "text";
   }
 
   if (!submissionData) {
@@ -375,7 +442,7 @@ submitBtn.addEventListener("click", async () => {
     return;
   }
 
-  submitBtn.innerText = "🤖 Creating feedback...";
+  submitBtn.innerText = "🤖 AI is checking your work...";
 
   submitBtn.disabled = true;
 
@@ -400,6 +467,16 @@ submitBtn.addEventListener("click", async () => {
 
     const data = await response.json();
 
+    if (!response.ok) {
+      throw new Error(data.error || "Evaluation failed");
+    }
+
+    // SCORE
+
+    scoreText.innerText = "⭐ " + data.score;
+
+    // COMMENT
+
     feedbackText.innerText = data.feedback;
 
     feedback.classList.remove("hidden");
@@ -408,7 +485,7 @@ submitBtn.addEventListener("click", async () => {
   } catch (error) {
     console.error(error);
 
-    alert("Something went wrong.");
+    alert("AI could not evaluate your submission. Please try again.");
 
     submitBtn.innerText = "✅ Submit Challenge";
 
@@ -423,7 +500,15 @@ submitBtn.addEventListener("click", async () => {
 document.getElementById("anotherBtn").addEventListener("click", () => {
   submission.value = "";
 
+  imageUpload.value = "";
+
+  imagePreview.src = "";
+
+  imagePreview.classList.add("hidden");
+
   drawingHistory = [];
+
+  feedback.classList.add("hidden");
 
   submitBtn.disabled = false;
 

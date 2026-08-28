@@ -1,31 +1,46 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 import os
+import base64
 
 app = Flask(__name__)
 
 # =========================
-# OLLAMA CLOUD SETTINGS
+# OLLAMA CLOUD
 # =========================
 
 OLLAMA_URL = "https://ollama.com/api/generate"
-MODEL = "gpt-oss:120b"
 
-# API key Render Environment Variable se aayegi
+# Vision model: supports text + images
+MODEL = "gemma3:4b"
+
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY")
 
-# Store challenges during current session
 previous_challenges = []
 
 
 # =========================
-# OLLAMA AI FUNCTION
+# OLLAMA TEXT REQUEST
 # =========================
 
-def ask_ollama(prompt):
+def ask_ollama(prompt, image_base64=None):
 
     if not OLLAMA_API_KEY:
-        raise Exception("OLLAMA_API_KEY is not configured on Render.")
+        raise Exception("OLLAMA_API_KEY is not configured.")
+
+    payload = {
+        "model": MODEL,
+        "prompt": prompt,
+        "stream": False
+    }
+
+    # Send image when available
+    if image_base64:
+        # Remove data:image/png;base64, or similar prefix
+        if "," in image_base64:
+            image_base64 = image_base64.split(",", 1)[1]
+
+        payload["images"] = [image_base64]
 
     response = requests.post(
         OLLAMA_URL,
@@ -33,23 +48,17 @@ def ask_ollama(prompt):
             "Authorization": f"Bearer {OLLAMA_API_KEY}",
             "Content-Type": "application/json"
         },
-        json={
-            "model": MODEL,
-            "prompt": prompt,
-            "stream": False
-        },
-        timeout=120
+        json=payload,
+        timeout=180
     )
 
     response.raise_for_status()
 
-    result = response.json()
-
-    return result["response"]
+    return response.json()["response"]
 
 
 # =========================
-# HOME PAGE
+# HOME
 # =========================
 
 @app.route("/")
@@ -65,68 +74,66 @@ def home():
 def generate():
 
     data = request.json
+    mood = data.get("mood", "")
 
-    mood = data.get("mood")
-
-    previous = "\n".join(previous_challenges)
+    previous = "\n".join(previous_challenges[-10:])
 
     prompt = f"""
-You are MoodMaker AI.
+You are MoodSpark, a fun creative challenge AI.
 
-The user's mood is:
-{mood}
+User mood: {mood}
 
-Create ONE small creative challenge for the user.
+Create ONE fun mini challenge.
 
-The challenge should help the user shift their mood
-in a positive and playful direction.
-
-IMPORTANT RULES:
-
-- The challenge must take only 2-5 minutes.
-- Keep it short.
-- Make it creative and interesting.
-- Make it easy to do immediately.
-- Match the user's mood.
-- Give only ONE challenge.
-- Do not give generic motivational advice.
-- Do not give medical or therapy advice.
-- Every challenge should be different.
+IMPORTANT:
+- Use VERY SIMPLE English.
+- Challenge must be SHORT.
+- Maximum 1-2 sentences for the challenge.
+- It must take 2-5 minutes.
+- Make it playful, creative and interesting.
+- Avoid boring motivational advice.
+- Avoid exercise or therapy advice.
+- Make the user WANT to actually do it.
+- Give a different challenge every time.
 - Do not repeat previous challenges.
 
-Possible challenge types:
+Use one of these types:
 
-Drawing
-Making something
-Puzzle
-Brain challenge
-Writing
-Storytelling
-Photography
-Observation
-Music
-Funny challenge
-Imagination
-Creative problem solving
+drawing
+craft
+photo
+writing
+puzzle
+brain
+creative
+
+Examples of GOOD challenges:
+
+TYPE: drawing
+CHALLENGE: Draw a tiny monster using only circles and triangles.
+
+TYPE: craft
+CHALLENGE: Make a tiny paper animal using one sheet of paper.
+
+TYPE: photo
+CHALLENGE: Find something around you that looks like a face and take a photo.
+
+TYPE: writing
+CHALLENGE: Write a funny 3-line story about your shoe.
+
+TYPE: puzzle
+CHALLENGE: Find 5 things around you that start with the letter S.
 
 Previous challenges:
-
 {previous}
 
-Generate a NEW challenge.
+Return ONLY this format:
 
-Return ONLY in this format:
+TYPE: drawing/craft/photo/writing/puzzle/brain/creative
 
-TYPE: drawing / making / puzzle / writing / photo / other
+CHALLENGE: short challenge
 
-CHALLENGE:
-Short challenge here
-
-TIME:
-2-5 minutes
-
-SUBMISSION:
-image or text
+TIME: 2-5 minutes
 """
 
     try:
@@ -143,13 +150,12 @@ image or text
         print("Ollama Error:", str(e))
 
         return jsonify({
-            "error": "Unable to connect to MoodSpark AI.",
-            "details": str(e)
+            "error": str(e)
         }), 500
 
 
 # =========================
-# SUBMIT CHALLENGE
+# SUBMIT + AI EVALUATION
 # =========================
 
 @app.route("/submit", methods=["POST"])
@@ -157,12 +163,24 @@ def submit():
 
     data = request.json
 
-    mood = data.get("mood")
-    challenge = data.get("challenge")
-    submission = data.get("submission")
+    mood = data.get("mood", "")
+    challenge = data.get("challenge", "")
+    submission = data.get("submission", "")
+    submission_type = data.get("submission_type", "text")
 
-    feedback_prompt = f"""
-You are MoodMaker AI.
+    image_base64 = None
+
+    if submission_type in ["drawing", "image"]:
+        image_base64 = submission
+
+    # =========================
+    # IMAGE EVALUATION
+    # =========================
+
+    if image_base64:
+
+        feedback_prompt = f"""
+You are the friendly judge of MoodSpark.
 
 User mood:
 {mood}
@@ -170,32 +188,102 @@ User mood:
 Challenge:
 {challenge}
 
-User's completed work/answer:
+The user submitted an image of their completed challenge.
+
+Look carefully at the image.
+
+Judge the submission based on:
+- Did they attempt the challenge?
+- Creativity
+- Effort
+- How well it matches the challenge
+
+Be encouraging, especially for simple or beginner work.
+
+Give a score from 1 to 10.
+
+IMPORTANT:
+- Do NOT give everyone 10/10 automatically.
+- Do not be harsh.
+- Give a genuine score.
+- Mention something specific you noticed.
+- Keep the comment impressive and positive.
+- Maximum 2 sentences.
+
+Return ONLY:
+
+SCORE: X/10
+
+COMMENT:
+Your short personalized comment.
+"""
+
+    else:
+
+        feedback_prompt = f"""
+You are the friendly judge of MoodSpark.
+
+User mood:
+{mood}
+
+Challenge:
+{challenge}
+
+User's answer:
 {submission}
 
-Give a short, friendly and encouraging response.
+Judge the answer based on:
+- Effort
+- Creativity
+- How well it completes the challenge
 
-Rules:
-- Appreciate the user's effort.
-- Keep it positive.
+Give a score from 1 to 10.
+
+IMPORTANT:
+- Do NOT give everyone 10/10 automatically.
+- Be positive but genuine.
+- Give a specific and impressive comment.
 - Maximum 2 sentences.
-- Do not judge harshly.
+
+Return ONLY:
+
+SCORE: X/10
+
+COMMENT:
+Your short personalized comment.
 """
 
     try:
-        feedback = ask_ollama(feedback_prompt)
+
+        feedback = ask_ollama(
+            feedback_prompt,
+            image_base64=image_base64
+        )
+
+        # Try to extract score
+        score = "10/10"
+
+        for line in feedback.splitlines():
+            if "SCORE:" in line.upper():
+                score = line.split(":", 1)[1].strip()
+                break
+
+        comment = feedback
+
+        if "COMMENT:" in feedback:
+            comment = feedback.split("COMMENT:", 1)[1].strip()
 
         return jsonify({
-            "feedback": feedback
+            "score": score,
+            "feedback": comment
         })
 
     except Exception as e:
 
-        print("Ollama Error:", str(e))
+        print("Ollama Evaluation Error:", str(e))
 
         return jsonify({
-            "error": "Unable to connect to MoodSpark AI.",
-            "details": str(e)
+            "error": str(e)
         }), 500
 
 

@@ -1,8 +1,8 @@
 <!doctype html>
-
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>MoodSpark ✨</title>
@@ -14,23 +14,19 @@
   </head>
 
   <body>
-    <!-- Background -->
-
     <div class="blob blob-one"></div>
     <div class="blob blob-two"></div>
 
     <main class="container">
-      ```
       <!-- HEADER -->
+
       <header>
         <div class="logo">✨ MoodSpark</div>
 
         <p>Your mood → A tiny creative adventure</p>
       </header>
 
-      <!-- ============================= -->
-      <!-- MOOD SELECTION -->
-      <!-- ============================= -->
+      <!-- MOOD SECTION -->
 
       <section id="moodSection" class="card">
         <div class="small-title">STEP 01</div>
@@ -83,13 +79,12 @@
 
         <button id="createBtn" class="primary-btn">
           Create My Challenge
+
           <span>→</span>
         </button>
       </section>
 
-      <!-- ============================= -->
       <!-- LOADING -->
-      <!-- ============================= -->
 
       <section id="loading" class="loading hidden">
         <div class="loader">✨</div>
@@ -99,9 +94,7 @@
         <p>MoodSpark is thinking of something fun 🤖</p>
       </section>
 
-      <!-- ============================= -->
       <!-- CHALLENGE -->
-      <!-- ============================= -->
 
       <section id="challengeSection" class="card challenge-card hidden">
         <div class="mission-badge">🎯 YOUR MINI MISSION</div>
@@ -110,19 +103,14 @@
 
         <h1>Your Creative Challenge</h1>
 
-        <!-- AI GENERATED CHALLENGE -->
         <div id="challengeText" class="challenge-text"></div>
 
-        <!-- ============================= -->
-        <!-- SUBMISSION AREA -->
-        <!-- ============================= -->
+        <!-- SUBMISSION -->
 
         <div id="submissionArea">
           <h3>🎨 Complete your challenge</h3>
 
-          <!-- ============================= -->
-          <!-- TEXT SUBMISSION -->
-          <!-- ============================= -->
+          <!-- TEXT -->
 
           <div id="textSubmission">
             <textarea
@@ -131,37 +119,7 @@
             ></textarea>
           </div>
 
-          <!-- ============================= -->
-          <!-- IMAGE UPLOAD -->
-          <!-- ============================= -->
-
-          <div id="imageSubmission" class="hidden">
-            <div class="upload-box">
-              <div class="upload-icon">📸</div>
-
-              <h3>Show us what you created!</h3>
-
-              <p>Upload a photo of your art, craft or creation.</p>
-
-              <label for="imageUpload" class="upload-btn">
-                📷 Choose Image
-              </label>
-
-              <input type="file" id="imageUpload" accept="image/*" hidden />
-
-              <!-- Image Preview -->
-
-              <div id="imagePreviewContainer" class="hidden">
-                <img id="imagePreview" src="" alt="Your submission" />
-
-                <button type="button" id="removeImage">❌ Remove Image</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- ============================= -->
-          <!-- DRAWING CANVAS -->
-          <!-- ============================= -->
+          <!-- DRAWING -->
 
           <div id="drawingSubmission" class="hidden">
             <div class="canvas-header">
@@ -175,18 +133,16 @@
             </div>
 
             <div class="canvas-tools">
-              <button type="button" id="clearCanvas">🧹 Clear</button>
+              <button id="clearCanvas" type="button">🧹 Clear</button>
 
-              <button type="button" id="undoCanvas">↩️ Undo</button>
+              <button id="undoCanvas" type="button">↩️ Undo</button>
             </div>
 
             <p class="canvas-hint">🖱️ Draw with your mouse or finger</p>
           </div>
         </div>
 
-        <!-- ============================= -->
         <!-- BUTTONS -->
-        <!-- ============================= -->
 
         <div class="buttons">
           <button id="submitBtn" class="submit-btn">✅ Submit Challenge</button>
@@ -196,36 +152,21 @@
           </button>
         </div>
 
-        <!-- ============================= -->
-        <!-- AI FEEDBACK -->
-        <!-- ============================= -->
+        <!-- FEEDBACK -->
 
         <div id="feedback" class="feedback hidden">
           <div class="feedback-icon">🎉</div>
 
           <div>
-            <h3>MoodSpark AI says...</h3>
+            <h3>MoodSpark says...</h3>
+
+            <div id="scoreText" class="score"></div>
 
             <p id="feedbackText"></p>
           </div>
         </div>
-
-        <!-- ============================= -->
-        <!-- AI RATING -->
-        <!-- ============================= -->
-
-        <div id="rating" class="rating hidden">
-          <div class="rating-title">⭐ Your AI Rating</div>
-
-          <div id="ratingScore" class="rating-score">10/10</div>
-
-          <p id="ratingComment">Amazing creativity! 🎨</p>
-        </div>
       </section>
-      ```
     </main>
-
-    <!-- JAVASCRIPT -->
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
   </body>

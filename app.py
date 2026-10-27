@@ -1,10 +1,11 @@
-
+```python
 from flask import Flask, render_template, request, jsonify
 import requests
+import csv
+from datetime import datetime
 import os
 import re
 import json
-import random
 import threading
 
 app = Flask(__name__)
@@ -19,6 +20,13 @@ OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY")
 
 previous_challenges = []
 history_lock = threading.Lock()
+feedback_lock = threading.Lock()
+
+# CSV feedback file location
+FEEDBACK_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "feedback.csv"
+)
 
 MOODS = {
     "happy": "playful, silly and full of surprises",
@@ -38,11 +46,19 @@ MODES = {
     "funny": "Create a silly, funny activity with an unexpected twist.",
     "word": "Create a quick word game, word puzzle or word challenge.",
     "brain": "Create a short logic or thinking challenge.",
-    "drawing": "Create a simple drawing challenge that can be done on a canvas or paper.",
+    "drawing": "Create a simple drawing challenge for a canvas or paper.",
     "creative": "Create an imaginative mini activity using ideas, stories or pretend inventions."
 }
 
 QUIZ_MODES = {"puzzle", "word", "brain"}
+
+FEEDBACK_FEELINGS = {
+    "Happier",
+    "Relaxed",
+    "Same",
+    "Still bored",
+    "More excited"
+}
 
 
 # =========================================================
@@ -90,7 +106,7 @@ def ask_ollama(prompt):
 
 
 def extract_json(text):
-    """Extract a JSON object even if the model adds code fences."""
+    """Extract a JSON object even if the AI adds code fences."""
     cleaned = text.strip()
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.I)
     cleaned = re.sub(r"\s*```$", "", cleaned)
@@ -124,6 +140,12 @@ def generate():
     try:
         data = request.get_json(silent=True) or {}
 
+        if not isinstance(data, dict):
+            return jsonify({
+                "success": False,
+                "error": "Invalid request data."
+            }), 400
+
         mood = str(data.get("mood", "happy")).lower().strip()
         mode = str(data.get("mode", "creative")).lower().strip()
 
@@ -138,21 +160,21 @@ def generate():
 
         recent_text = "\n".join(recent) if recent else "None yet."
 
-        quiz_instruction = ""
         if mode in QUIZ_MODES:
             quiz_instruction = """
-For this mode, also create a multiple-choice mini-game:
+For this mode, create a multiple-choice mini-game:
 - "game_prompt": one clear question.
 - "options": exactly four short answer options.
 - "answer": the exact text of the correct option.
 - "hint": one short helpful clue.
-The answer must match one of the four options exactly.
+The answer must match one option exactly.
 Do not reveal the answer in the challenge text.
 """
         else:
             quiz_instruction = """
 This is an activity mode, not a multiple-choice quiz.
-Set "game_prompt", "options", "answer" and "hint" to empty strings or an empty array.
+Set "game_prompt", "answer" and "hint" to empty strings.
+Set "options" to an empty array.
 """
 
         prompt = f"""
@@ -171,7 +193,7 @@ Create ONE fresh activity that:
 - Needs no money or special equipment.
 - Is suitable for a wide range of ages.
 - Does not pressure or embarrass the user.
-- Avoids repeating the same central idea from recent challenges.
+- Avoids repeating recent challenges.
 - Has a short, catchy title.
 - Fits the selected game mode.
 
@@ -193,23 +215,29 @@ Return ONLY a valid JSON object using exactly these keys:
 }}
 
 For non-quiz modes, "options" must be [].
-Do not include Markdown or any text outside the JSON.
+Do not include Markdown or text outside the JSON.
 """
 
         raw_response = ask_ollama(prompt)
         result = extract_json(raw_response)
 
-        title = str(result.get("title", "Your Tiny Challenge")).strip()
-        challenge_text = str(result.get("challenge_text", "")).strip()
-        challenge_type = str(result.get("type", mode)).strip()
-        time_text = str(result.get("time", "2-5 minutes")).strip()
+        title = str(
+            result.get("title", "Your Tiny Challenge")
+        ).strip()[:150]
+
+        challenge_text = str(
+            result.get("challenge_text", "")
+        ).strip()[:2000]
+
+        time_text = str(
+            result.get("time", "2-5 minutes")
+        ).strip()[:50]
 
         if not challenge_text:
             raise ValueError("The AI did not provide challenge instructions.")
 
-        # Keep the challenge in the format used by the existing frontend.
         challenge = (
-            f"TYPE: {challenge_type}\n"
+            f"TYPE: {mode}\n"
             f"TITLE: {title}\n"
             f"CHALLENGE: {challenge_text}\n"
             f"TIME: {time_text}"
@@ -220,14 +248,19 @@ Do not include Markdown or any text outside the JSON.
         if mode in QUIZ_MODES:
             options = result.get("options", [])
             answer = str(result.get("answer", "")).strip()
-            game_prompt = str(result.get("game_prompt", "")).strip()
+            game_prompt = str(
+                result.get("game_prompt", "")
+            ).strip()
             hint = str(result.get("hint", "")).strip()
 
-            # Validate the quiz data before sending it to the browser.
             if (
                 isinstance(options, list)
                 and len(options) == 4
-                and all(isinstance(option, str) for option in options)
+                and all(
+                    isinstance(option, str) and option.strip()
+                    for option in options
+                )
+                and len(set(options)) == 4
                 and answer in options
                 and game_prompt
             ):
@@ -283,6 +316,12 @@ def submit():
     try:
         data = request.get_json(silent=True) or {}
 
+        if not isinstance(data, dict):
+            return jsonify({
+                "success": False,
+                "error": "Invalid submission data."
+            }), 400
+
         mood = str(data.get("mood", "happy")).lower().strip()[:50]
         mode = str(data.get("mode", "creative")).lower().strip()[:50]
         challenge = str(data.get("challenge", "")).strip()[:3000]
@@ -303,8 +342,7 @@ def submit():
                 "error": "Please submit your challenge first."
             }), 400
 
-        # This model is not assumed to have image-vision capabilities.
-        # Do not send a canvas base64 image to the model as ordinary text.
+        # Placeholder scoring: this model is not assumed to inspect images.
         if submission.startswith("data:image/"):
             return jsonify({
                 "success": True,
@@ -350,7 +388,7 @@ Be encouraging but honest. Do not assume missing details.
 Use simple English. Mention one specific detail if possible.
 Keep the comment to one or two short sentences.
 
-Return ONLY valid JSON in this format:
+Return ONLY valid JSON:
 {{
   "score": 8,
   "comment": "Short, specific and friendly feedback."
@@ -399,6 +437,116 @@ Return ONLY valid JSON in this format:
 
 
 # =========================================================
+# USER FEEDBACK SESSION
+# =========================================================
+
+@app.route("/feedback", methods=["POST"])
+def save_feedback():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({
+            "success": False,
+            "error": "Invalid feedback data."
+        }), 400
+
+    # Validate rating
+    rating_value = data.get("rating")
+
+    try:
+        if isinstance(rating_value, bool):
+            raise ValueError
+
+        rating = int(rating_value)
+
+        if str(rating_value).strip() != str(rating):
+            raise ValueError
+
+        if rating not in range(1, 6):
+            raise ValueError
+
+    except (TypeError, ValueError):
+        return jsonify({
+            "success": False,
+            "error": "Please select a rating from 1 to 5."
+        }), 400
+
+    # Validate selected feeling
+    feeling = str(data.get("feeling", "")).strip()
+
+    if feeling not in FEEDBACK_FEELINGS:
+        return jsonify({
+            "success": False,
+            "error": "Please select how you feel."
+        }), 400
+
+    # Validate written feedback
+    message = data.get("message", "")
+
+    if not isinstance(message, str):
+        return jsonify({
+            "success": False,
+            "error": "Feedback message must be text."
+        }), 400
+
+    message = message.strip()
+
+    if len(message) > 1000:
+        return jsonify({
+            "success": False,
+            "error": "Feedback must be under 1000 characters."
+        }), 400
+
+    timestamp = datetime.now().astimezone().isoformat(
+        timespec="seconds"
+    )
+
+    try:
+        with feedback_lock:
+            file_exists = (
+                os.path.exists(FEEDBACK_FILE)
+                and os.path.getsize(FEEDBACK_FILE) > 0
+            )
+
+            with open(
+                FEEDBACK_FILE,
+                "a",
+                newline="",
+                encoding="utf-8"
+            ) as file:
+                writer = csv.writer(file)
+
+                if not file_exists:
+                    writer.writerow([
+                        "timestamp",
+                        "rating",
+                        "feeling",
+                        "message"
+                    ])
+
+                writer.writerow([
+                    timestamp,
+                    rating,
+                    feeling,
+                    message
+                ])
+
+        app.logger.info("MoodSpark feedback saved successfully.")
+
+        return jsonify({
+            "success": True,
+            "message": "Thank you! Your feedback has been received."
+        }), 200
+
+    except OSError:
+        app.logger.exception("Unable to save feedback")
+        return jsonify({
+            "success": False,
+            "error": "Feedback could not be saved right now. Please try again."
+        }), 500
+
+
+# =========================================================
 # HEALTH CHECK
 # =========================================================
 
@@ -423,3 +571,4 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
+```

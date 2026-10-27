@@ -22,11 +22,9 @@ previous_challenges = []
 history_lock = threading.Lock()
 feedback_lock = threading.Lock()
 
-# CSV feedback file location
-FEEDBACK_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "feedback.csv"
-)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.csv")
 
 MOODS = {
     "happy": "playful, silly and full of surprises",
@@ -82,9 +80,7 @@ def ask_ollama(prompt):
             {"role": "user", "content": prompt}
         ],
         "stream": False,
-        "options": {
-            "temperature": 0.9
-        }
+        "options": {"temperature": 0.9}
     }
 
     response = requests.post(
@@ -96,8 +92,7 @@ def ask_ollama(prompt):
 
     response.raise_for_status()
 
-    result = response.json()
-    content = result.get("message", {}).get("content", "")
+    content = response.json().get("message", {}).get("content", "")
 
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError("The AI returned an empty response.")
@@ -106,7 +101,6 @@ def ask_ollama(prompt):
 
 
 def extract_json(text):
-    """Extract a JSON object even if the AI adds code fences."""
     cleaned = text.strip()
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.I)
     cleaned = re.sub(r"\s*```$", "", cleaned)
@@ -138,7 +132,7 @@ def home():
 @app.route("/generate", methods=["POST"])
 def generate():
     try:
-        data = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True)
 
         if not isinstance(data, dict):
             return jsonify({
@@ -162,19 +156,16 @@ def generate():
 
         if mode in QUIZ_MODES:
             quiz_instruction = """
-For this mode, create a multiple-choice mini-game:
-- "game_prompt": one clear question.
-- "options": exactly four short answer options.
-- "answer": the exact text of the correct option.
-- "hint": one short helpful clue.
-The answer must match one option exactly.
+Create a multiple-choice game.
+Provide a clear question, exactly four different short options,
+the correct answer matching one option exactly, and a short hint.
 Do not reveal the answer in the challenge text.
 """
         else:
             quiz_instruction = """
-This is an activity mode, not a multiple-choice quiz.
-Set "game_prompt", "answer" and "hint" to empty strings.
-Set "options" to an empty array.
+This is not a multiple-choice quiz.
+Set game_prompt, answer and hint to empty strings.
+Set options to an empty array.
 """
 
         prompt = f"""
@@ -182,7 +173,6 @@ You are MoodSpark, a creative mini-game designer.
 
 USER MOOD: {mood}
 MOOD STYLE: {MOODS[mood]}
-
 SELECTED GAME MODE: {mode}
 MODE INSTRUCTIONS: {MODES[mode]}
 
@@ -192,46 +182,36 @@ Create ONE fresh activity that:
 - Is fun, specific, safe and easy to start.
 - Needs no money or special equipment.
 - Is suitable for a wide range of ages.
-- Does not pressure or embarrass the user.
 - Avoids repeating recent challenges.
 - Has a short, catchy title.
-- Fits the selected game mode.
 
-RECENT CHALLENGES TO AVOID:
+Recent challenges to avoid:
 {recent_text}
 
 {quiz_instruction}
 
-Return ONLY a valid JSON object using exactly these keys:
+Return ONLY a valid JSON object with these keys:
 {{
   "type": "{mode}",
   "title": "Short catchy title",
-  "challenge_text": "One to three short sentences explaining the activity.",
+  "challenge_text": "One to three short sentences",
   "time": "2-5 minutes",
-  "game_prompt": "Question for quiz modes, otherwise empty string",
-  "options": ["Option A", "Option B", "Option C", "Option D"],
-  "answer": "Correct option text for quiz modes, otherwise empty string",
-  "hint": "Short hint for quiz modes, otherwise empty string"
+  "game_prompt": "",
+  "options": [],
+  "answer": "",
+  "hint": ""
 }}
 
-For non-quiz modes, "options" must be [].
-Do not include Markdown or text outside the JSON.
+For quiz modes, provide the question, four options, correct answer
+and hint. For other modes, keep quiz fields empty.
+Do not include Markdown outside the JSON.
 """
 
-        raw_response = ask_ollama(prompt)
-        result = extract_json(raw_response)
+        result = extract_json(ask_ollama(prompt))
 
-        title = str(
-            result.get("title", "Your Tiny Challenge")
-        ).strip()[:150]
-
-        challenge_text = str(
-            result.get("challenge_text", "")
-        ).strip()[:2000]
-
-        time_text = str(
-            result.get("time", "2-5 minutes")
-        ).strip()[:50]
+        title = str(result.get("title", "Your Tiny Challenge")).strip()[:150]
+        challenge_text = str(result.get("challenge_text", "")).strip()[:2000]
+        time_text = str(result.get("time", "2-5 minutes")).strip()[:50]
 
         if not challenge_text:
             raise ValueError("The AI did not provide challenge instructions.")
@@ -248,18 +228,13 @@ Do not include Markdown or text outside the JSON.
         if mode in QUIZ_MODES:
             options = result.get("options", [])
             answer = str(result.get("answer", "")).strip()
-            game_prompt = str(
-                result.get("game_prompt", "")
-            ).strip()
+            game_prompt = str(result.get("game_prompt", "")).strip()
             hint = str(result.get("hint", "")).strip()
 
             if (
                 isinstance(options, list)
                 and len(options) == 4
-                and all(
-                    isinstance(option, str) and option.strip()
-                    for option in options
-                )
+                and all(isinstance(o, str) and o.strip() for o in options)
                 and len(set(options)) == 4
                 and answer in options
                 and game_prompt
@@ -273,10 +248,8 @@ Do not include Markdown or text outside the JSON.
             else:
                 raise ValueError("The AI returned incomplete quiz data.")
 
-        history_entry = f"{mode}: {title} - {challenge_text}"
-
         with history_lock:
-            previous_challenges.append(history_entry)
+            previous_challenges.append(f"{mode}: {title} - {challenge_text}")
 
             if len(previous_challenges) > 30:
                 previous_challenges.pop(0)
@@ -314,7 +287,7 @@ Do not include Markdown or text outside the JSON.
 @app.route("/submit", methods=["POST"])
 def submit():
     try:
-        data = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True)
 
         if not isinstance(data, dict):
             return jsonify({
@@ -322,13 +295,13 @@ def submit():
                 "error": "Invalid submission data."
             }), 400
 
-        mood = str(data.get("mood", "happy")).lower().strip()[:50]
-        mode = str(data.get("mode", "creative")).lower().strip()[:50]
+        mood = str(data.get("mood", "happy")).strip()[:50]
+        mode = str(data.get("mode", "creative")).strip()[:50]
         challenge = str(data.get("challenge", "")).strip()[:3000]
         submission = str(data.get("submission", "")).strip()[:10000]
         submission_type = str(
             data.get("submission_type", "text")
-        ).lower().strip()[:50]
+        ).strip()[:50]
 
         if not challenge:
             return jsonify({
@@ -342,15 +315,13 @@ def submit():
                 "error": "Please submit your challenge first."
             }), 400
 
-        # Placeholder scoring: this model is not assumed to inspect images.
         if submission.startswith("data:image/"):
             return jsonify({
                 "success": True,
                 "score": "7/10",
                 "feedback": (
-                    "Your drawing was submitted! This model cannot inspect "
-                    "the image itself, so this is a placeholder score rather "
-                    "than a visual evaluation."
+                    "Your drawing was submitted! This is a placeholder score, "
+                    "not an evaluation of the image itself."
                 ),
                 "xp": 70,
                 "earned_xp": 70
@@ -359,34 +330,16 @@ def submit():
         prompt = f"""
 You are the friendly and fair judge of MoodSpark.
 
-CHALLENGE:
-{challenge}
+CHALLENGE: {challenge}
+USER MOOD: {mood}
+GAME MODE: {mode}
+SUBMISSION TYPE: {submission_type}
+USER SUBMISSION: {submission}
 
-USER MOOD:
-{mood}
-
-GAME MODE:
-{mode}
-
-SUBMISSION TYPE:
-{submission_type}
-
-USER SUBMISSION:
-{submission}
-
-Give a fair score from 1 to 10 based on the actual submission.
-Consider effort, creativity and how well it follows the challenge.
-
-Scoring guide:
-1-3: Very little of the task is shown.
-4-5: A start has been made.
-6-7: A good attempt with some interesting details.
-8-9: Strong effort or a clever idea.
-10: Especially original and well-executed.
-
-Be encouraging but honest. Do not assume missing details.
-Use simple English. Mention one specific detail if possible.
-Keep the comment to one or two short sentences.
+Give an honest score from 1 to 10 based on effort, creativity,
+and how well the submission follows the challenge.
+Be encouraging but honest. Use simple English and one or two
+short sentences. Mention a specific detail if possible.
 
 Return ONLY valid JSON:
 {{
@@ -395,19 +348,17 @@ Return ONLY valid JSON:
 }}
 """
 
-        raw_feedback = ask_ollama(prompt)
-        result = extract_json(raw_feedback)
+        result = extract_json(ask_ollama(prompt))
 
         try:
             score = int(result.get("score", 0))
         except (ValueError, TypeError):
             score = 0
 
-        if score < 1 or score > 10:
+        if not 1 <= score <= 10:
             raise ValueError("The AI returned an invalid score.")
 
         comment = str(result.get("comment", "")).strip()
-
         if not comment:
             comment = "Thanks for giving this challenge a try!"
 
@@ -425,7 +376,7 @@ Return ONLY valid JSON:
         app.logger.exception("Ollama evaluation request failed")
         return jsonify({
             "success": False,
-            "error": "Could not evaluate your work right now. Please try again."
+            "error": "Could not evaluate your submission right now."
         }), 502
 
     except Exception:
@@ -450,7 +401,6 @@ def save_feedback():
             "error": "Invalid feedback data."
         }), 400
 
-    # Validate rating
     rating_value = data.get("rating")
 
     try:
@@ -471,16 +421,15 @@ def save_feedback():
             "error": "Please select a rating from 1 to 5."
         }), 400
 
-    # Validate selected feeling
-    feeling = str(data.get("feeling", "")).strip()
+    feeling = data.get("feeling")
 
-    if feeling not in FEEDBACK_FEELINGS:
+    if not isinstance(feeling, str) or feeling.strip() not in FEEDBACK_FEELINGS:
         return jsonify({
             "success": False,
             "error": "Please select how you feel."
         }), 400
 
-    # Validate written feedback
+    feeling = feeling.strip()
     message = data.get("message", "")
 
     if not isinstance(message, str):
@@ -542,12 +491,12 @@ def save_feedback():
         app.logger.exception("Unable to save feedback")
         return jsonify({
             "success": False,
-            "error": "Feedback could not be saved right now. Please try again."
+            "error": "Feedback could not be saved right now."
         }), 500
 
 
 # =========================================================
-# HEALTH CHECK
+# ROUTE CHECK — useful for testing deployment
 # =========================================================
 
 @app.route("/health")
@@ -557,6 +506,14 @@ def health():
         "model": MODEL,
         "message": "MoodSpark AI is running!"
     })
+
+
+@app.route("/feedback", methods=["GET"])
+def feedback_route_check():
+    return jsonify({
+        "success": True,
+        "message": "Feedback route exists. Submit feedback using POST."
+    }), 200
 
 
 # =========================================================

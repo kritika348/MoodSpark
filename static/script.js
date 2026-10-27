@@ -727,5 +727,54 @@ if ("ResizeObserver" in window) {
 
   canvasObserver.observe(canvas);
 }
+const feedbackForm = document.getElementById("feedbackForm");
+const feedbackStatus = document.getElementById("feedbackStatus");
+const feedbackSubmit = document.getElementById("feedbackSubmit");
+
+if (feedbackForm) {
+  feedbackForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    feedbackSubmit.disabled = true;
+    feedbackSubmit.textContent = "Sending... 💌";
+    feedbackStatus.textContent = "";
+
+    const formData = new FormData(feedbackForm);
+
+    const feedback = {
+      rating: Number(formData.get("rating")),
+      feeling: formData.get("feeling"),
+      message: formData.get("message").trim()
+    };
+
+    try {
+      const response = await fetch("/feedback", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(feedback)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Could not send feedback.");
+      }
+
+      feedbackStatus.textContent =
+        "Thank you! Your feedback has been received. 💜✨";
+
+      feedbackForm.reset();
+
+    } catch (error) {
+      feedbackStatus.textContent =
+        "Oops! Feedback could not be sent. Please try again. 💛";
+    } finally {
+      feedbackSubmit.disabled = false;
+      feedbackSubmit.textContent = "Send Feedback 💌";
+    }
+  });
+}
 
 console.log("✨ MoodSpark game controller loaded!");

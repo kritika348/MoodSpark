@@ -1,46 +1,120 @@
 // ==================================================
-// VARIABLES
+// MOODSPARK — GAME CONTROLLER
+// Compatible with Flask /generate and /submit routes
 // ==================================================
 
 let selectedMood = "";
-
+let selectedMode = "";
 let currentChallenge = "";
-
 let drawingHistory = [];
-
 let isDrawing = false;
+let timerInterval = null;
+let timeLeft = 0;
+let totalXP = 0;
+let hasSubmitted = false;
+let currentGameData = null;
+let selectedAnswer = "";
+let gameFinished = false;
 
 // ==================================================
 // DOM ELEMENTS
 // ==================================================
 
+const $ = (id) => document.getElementById(id);
+
 const moodCards = document.querySelectorAll(".mood-card");
+const modeCards = document.querySelectorAll(".mode-card");
 
-const moodSection = document.getElementById("moodSection");
+const moodSection = $("moodSection");
+const gameModeSection = $("gameModeSection");
+const challengeSection = $("challengeSection");
+const loading = $("loading");
 
-const challengeSection = document.getElementById("challengeSection");
+const challengeText = $("challengeText");
+const challengeTitle = $("challengeTitle");
+const challengeIcon = $("challengeIcon");
+const challengeMeta = $("challengeMeta");
 
-const loading = document.getElementById("loading");
+const textSubmission = $("textSubmission");
+const drawingSubmission = $("drawingSubmission");
+const submission = $("submission");
 
-const challengeText = document.getElementById("challengeText");
+const feedback = $("feedback");
+const feedbackText = $("feedbackText");
+const scoreText = $("scoreText");
+const feedbackHeading = $("feedbackHeading");
+const earnedXp = $("earnedXp");
 
-const textSubmission = document.getElementById("textSubmission");
+const submitBtn = $("submitBtn");
+const anotherBtn = $("anotherBtn");
 
-const drawingSubmission = document.getElementById("drawingSubmission");
+const miniGameArea = $("miniGameArea");
+const gamePrompt = $("gamePrompt");
+const gameOptions = $("gameOptions");
+const gameResult = $("gameResult");
+const hintBtn = $("hintBtn");
 
-const submission = document.getElementById("submission");
+const gameTimer = $("gameTimer");
+const xpValue = $("xpValue");
 
-const feedback = document.getElementById("feedback");
-
-const feedbackText = document.getElementById("feedbackText");
-
-const scoreText = document.getElementById("scoreText");
-
-const submitBtn = document.getElementById("submitBtn");
-
-const canvas = document.getElementById("drawingCanvas");
-
+const canvas = $("drawingCanvas");
 const ctx = canvas.getContext("2d");
+
+// ==================================================
+// GAME CONFIGURATION
+// ==================================================
+
+const gameConfig = {
+  puzzle: {
+    title: "Puzzle Pop",
+    icon: "🧩",
+    seconds: 30
+  },
+  funny: {
+    title: "LOL Factory",
+    icon: "🤣",
+    seconds: 60
+  },
+  word: {
+    title: "Word Wizard",
+    icon: "🔤",
+    seconds: 30
+  },
+  brain: {
+    title: "Brain Trap",
+    icon: "🧠",
+    seconds: 30
+  },
+  drawing: {
+    title: "Doodle Dash",
+    icon: "🎨",
+    seconds: 120
+  },
+  creative: {
+    title: "Weird Mode",
+    icon: "👽",
+    seconds: 120
+  }
+};
+
+// ==================================================
+// TOAST NOTIFICATIONS
+// ==================================================
+
+let toastTimeout;
+
+function showToast(message) {
+  const toast = $("toast");
+
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+
+  clearTimeout(toastTimeout);
+
+  toastTimeout = setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 3000);
+}
 
 // ==================================================
 // MOOD SELECTION
@@ -50,198 +124,221 @@ moodCards.forEach((card) => {
   card.addEventListener("click", () => {
     moodCards.forEach((item) => {
       item.classList.remove("selected");
+      item.setAttribute("aria-pressed", "false");
     });
 
     card.classList.add("selected");
+    card.setAttribute("aria-pressed", "true");
 
     selectedMood = card.dataset.mood;
+
+    showToast("Your vibe: " + card.querySelector("span:last-child").textContent);
   });
 });
+
+// ==================================================
+// GAME MODE SELECTION
+// ==================================================
+
+modeCards.forEach((card) => {
+  card.addEventListener("click", () => {
+    modeCards.forEach((item) => {
+      item.classList.remove("selected");
+      item.setAttribute("aria-pressed", "false");
+    });
+
+    card.classList.add("selected");
+    card.setAttribute("aria-pressed", "true");
+
+    selectedMode = card.dataset.mode;
+  });
+});
+
+// ==================================================
+// RANDOM SELECTION
+// ==================================================
+
+function chooseRandomMood() {
+  const index = Math.floor(Math.random() * moodCards.length);
+  moodCards[index].click();
+}
+
+function chooseRandomMode() {
+  const index = Math.floor(Math.random() * modeCards.length);
+  modeCards[index].click();
+}
+
+$("surpriseBtn").addEventListener("click", () => {
+  chooseRandomMood();
+  chooseRandomMode();
+
+  showToast("Surprise mode activated! 🎲");
+
+  generateChallenge();
+});
+
+// ==================================================
+// TIMER
+// ==================================================
+
+function stopTimer() {
+  if (timerInterval !== null) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function startTimer(seconds) {
+  stopTimer();
+
+  timeLeft = seconds;
+  updateTimerDisplay();
+
+  timerInterval = setInterval(() => {
+    if (timeLeft > 0) {
+      timeLeft--;
+      updateTimerDisplay();
+    } else {
+      stopTimer();
+
+      if (gameTimer) {
+        gameTimer.textContent = "⏰ TIME'S UP!";
+        gameTimer.classList.add("urgent");
+      }
+
+      showToast("Time's up! You can still submit your answer.");
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+
+  gameTimer.textContent =
+    "⏱ " +
+    String(minutes).padStart(2, "0") +
+    ":" +
+    String(seconds).padStart(2, "0");
+
+  gameTimer.classList.toggle("urgent", timeLeft <= 10);
+}
 
 // ==================================================
 // CANVAS SETUP
 // ==================================================
 
 function setupCanvas() {
-  const rect = canvas.getBoundingClientRect();
+  if (!canvas || canvas.clientWidth === 0) return;
 
+  const rect = canvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
 
-  canvas.width = rect.width * ratio;
-
-  canvas.height = rect.height * ratio;
+  canvas.width = Math.round(rect.width * ratio);
+  canvas.height = Math.round(rect.height * ratio);
 
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-  ctx.fillStyle = "white";
-
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, rect.width, rect.height);
 
   ctx.lineWidth = 4;
-
   ctx.lineCap = "round";
-
   ctx.lineJoin = "round";
-
   ctx.strokeStyle = "#292333";
-}
 
-// ==================================================
-// POSITION
-// ==================================================
+  drawingHistory = [];
+
+  $("drawingStatus").textContent = "Go wild!";
+}
 
 function getPosition(event) {
   const rect = canvas.getBoundingClientRect();
 
-  let clientX;
-
-  let clientY;
-
-  if (event.touches) {
-    clientX = event.touches[0].clientX;
-
-    clientY = event.touches[0].clientY;
-  } else {
-    clientX = event.clientX;
-
-    clientY = event.clientY;
-  }
-
   return {
-    x: clientX - rect.left,
-
-    y: clientY - rect.top,
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
   };
 }
 
-// ==================================================
-// SAVE DRAWING
-// ==================================================
-
 function saveCanvas() {
-  drawingHistory.push(canvas.toDataURL("image/png"));
+  if (canvas.width && canvas.height) {
+    drawingHistory.push(canvas.toDataURL("image/png"));
 
-  if (drawingHistory.length > 20) {
-    drawingHistory.shift();
+    if (drawingHistory.length > 30) {
+      drawingHistory.shift();
+    }
   }
 }
 
-// ==================================================
-// START DRAWING
-// ==================================================
-
 function startDrawing(event) {
+  if (hasSubmitted) return;
+
   event.preventDefault();
 
   isDrawing = true;
-
   saveCanvas();
 
   const position = getPosition(event);
 
   ctx.beginPath();
-
   ctx.moveTo(position.x, position.y);
 }
 
-// ==================================================
-// DRAW
-// ==================================================
-
 function draw(event) {
-  if (!isDrawing) {
-    return;
-  }
+  if (!isDrawing) return;
 
   event.preventDefault();
 
   const position = getPosition(event);
 
   ctx.lineTo(position.x, position.y);
-
   ctx.stroke();
 
   ctx.beginPath();
-
   ctx.moveTo(position.x, position.y);
 
-  document.getElementById("drawingStatus").innerText = "✏️ Drawing...";
+  $("drawingStatus").textContent = "✏️ Drawing...";
 }
-
-// ==================================================
-// STOP DRAWING
-// ==================================================
 
 function stopDrawing(event) {
-  if (!isDrawing) {
-    return;
-  }
+  if (!isDrawing) return;
 
-  event.preventDefault();
+  if (event) event.preventDefault();
 
   isDrawing = false;
-
   ctx.beginPath();
 
-  document.getElementById("drawingStatus").innerText = "✨ Nice!";
+  $("drawingStatus").textContent = "✨ Nice!";
 }
 
-// ==================================================
-// MOUSE EVENTS
-// ==================================================
-
-canvas.addEventListener("mousedown", startDrawing);
-
-canvas.addEventListener("mousemove", draw);
-
-canvas.addEventListener("mouseup", stopDrawing);
-
-canvas.addEventListener("mouseleave", stopDrawing);
-
-// ==================================================
-// TOUCH EVENTS
-// ==================================================
-
-canvas.addEventListener("touchstart", startDrawing, { passive: false });
-
-canvas.addEventListener("touchmove", draw, { passive: false });
-
-canvas.addEventListener("touchend", stopDrawing, { passive: false });
+canvas.addEventListener("pointerdown", startDrawing);
+canvas.addEventListener("pointermove", draw);
+canvas.addEventListener("pointerup", stopDrawing);
+canvas.addEventListener("pointercancel", stopDrawing);
+canvas.addEventListener("pointerleave", stopDrawing);
 
 // ==================================================
 // CLEAR CANVAS
 // ==================================================
 
-document.getElementById("clearCanvas").addEventListener("click", () => {
-  saveCanvas();
+$("clearCanvas").addEventListener("click", () => {
+  if (hasSubmitted) return;
 
   const rect = canvas.getBoundingClientRect();
 
-  ctx.fillStyle = "white";
+  ctx.clearRect(0, 0, rect.width, rect.height);
 
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, rect.width, rect.height);
 
   drawingHistory = [];
 
-  document.getElementById("drawingStatus").innerText = "Canvas cleared";
+  $("drawingStatus").textContent = "Canvas cleared";
 });
 
 // ==================================================
-// UNDO
-// ==================================================
-
-document.getElementById("undoCanvas").addEventListener("click", () => {
-  if (drawingHistory.length === 0) {
-    return;
-  }
-
-  const previous = drawingHistory.pop();
-
-  restoreCanvas(previous);
-});
-
-// ==================================================
-// RESTORE CANVAS
+// UNDO DRAWING
 // ==================================================
 
 function restoreCanvas(data) {
@@ -251,6 +348,8 @@ function restoreCanvas(data) {
     const rect = canvas.getBoundingClientRect();
 
     ctx.clearRect(0, 0, rect.width, rect.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, rect.width, rect.height);
 
     ctx.drawImage(image, 0, 0, rect.width, rect.height);
   };
@@ -258,28 +357,147 @@ function restoreCanvas(data) {
   image.src = data;
 }
 
+$("undoCanvas").addEventListener("click", () => {
+  if (hasSubmitted) return;
+
+  if (!drawingHistory.length) {
+    showToast("Nothing to undo yet!");
+    return;
+  }
+
+  restoreCanvas(drawingHistory.pop());
+
+  $("drawingStatus").textContent = "↩️ Undo complete";
+});
+
 // ==================================================
-// DETECT SUBMISSION TYPE
+// CHALLENGE SUBMISSION TYPE
 // ==================================================
 
 function showSubmissionType(challenge) {
-  const lower = challenge.toLowerCase();
+  const isDrawing =
+    typeof challenge === "string" &&
+    /type\s*:\s*drawing/i.test(challenge);
 
-  const drawing = lower.includes("type: drawing");
-
-  if (drawing) {
+  if (selectedMode === "drawing") {
     textSubmission.classList.add("hidden");
-
     drawingSubmission.classList.remove("hidden");
 
-    drawingHistory = [];
+    requestAnimationFrame(setupCanvas);
+  } else if (isDrawing) {
+    textSubmission.classList.add("hidden");
+    drawingSubmission.classList.remove("hidden");
 
-    setTimeout(setupCanvas, 100);
+    requestAnimationFrame(setupCanvas);
   } else {
     drawingSubmission.classList.add("hidden");
-
     textSubmission.classList.remove("hidden");
   }
+}
+
+// ==================================================
+// OPTIONAL INTERACTIVE GAME DATA
+// Supports /generate responses containing:
+// { prompt, options: [], answer, hint }
+// ==================================================
+
+function setupMiniGame(data) {
+  currentGameData = data;
+  selectedAnswer = "";
+  gameFinished = false;
+
+  gameOptions.replaceChildren();
+  gameResult.textContent = "";
+  gameResult.classList.add("hidden");
+  miniGameArea.classList.add("hidden");
+  hintBtn.classList.remove("hidden");
+
+  if (
+    !data ||
+    !Array.isArray(data.options) ||
+    data.options.length < 2
+  ) {
+    return;
+  }
+
+  miniGameArea.classList.remove("hidden");
+
+  gamePrompt.textContent =
+    data.prompt || "Choose your answer!";
+
+  data.options.forEach((option) => {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.textContent = String(option);
+
+    button.addEventListener("click", () => {
+      if (gameFinished || hasSubmitted) return;
+
+      selectedAnswer = String(option);
+
+      gameOptions.querySelectorAll("button").forEach((item) => {
+        item.classList.remove("selected");
+      });
+
+      button.classList.add("selected");
+    });
+
+    gameOptions.appendChild(button);
+  });
+}
+
+// ==================================================
+// HINT BUTTON
+// ==================================================
+
+hintBtn.addEventListener("click", () => {
+  if (currentGameData && currentGameData.hint) {
+    showToast("💡 " + currentGameData.hint);
+    return;
+  }
+
+  const hints = {
+    puzzle: "Look for a pattern. The smallest detail may matter!",
+    funny: "The sillier your idea, the better!",
+    word: "Try rearranging the letters into smaller groups.",
+    brain: "Read the question carefully before answering.",
+    drawing: "Start with simple shapes, then add details.",
+    creative: "There are no perfect answers. Be imaginative!"
+  };
+
+  showToast(
+    "💡 " +
+    (hints[selectedMode] || "Take a breath and give it a try!")
+  );
+});
+
+// ==================================================
+// RESET CHALLENGE STATE
+// ==================================================
+
+function resetChallengeState() {
+  stopTimer();
+
+  hasSubmitted = false;
+  currentGameData = null;
+  selectedAnswer = "";
+  gameFinished = false;
+
+  submission.value = "";
+
+  feedback.classList.add("hidden");
+  miniGameArea.classList.add("hidden");
+  gameResult.classList.add("hidden");
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = "🚀 Lock in my answer";
+
+  gameTimer.classList.remove("urgent");
+  gameTimer.textContent = "⏱ YOUR TURN";
+
+  $("earnedXp").textContent = "";
+  $("feedbackHeading").textContent = "The judge has spoken!";
 }
 
 // ==================================================
@@ -287,50 +505,73 @@ function showSubmissionType(challenge) {
 // ==================================================
 
 async function generateChallenge() {
+  if (!selectedMood || !selectedMode) {
+    showToast("Pick a mood and a game mode first 😊");
+    return;
+  }
+
+  resetChallengeState();
+
   loading.classList.remove("hidden");
-
   moodSection.classList.add("hidden");
-
+  gameModeSection.classList.add("hidden");
   challengeSection.classList.add("hidden");
-
-  feedback.classList.add("hidden");
 
   try {
     const response = await fetch("/generate", {
       method: "POST",
-
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-
       body: JSON.stringify({
         mood: selectedMood,
-      }),
+        mode: selectedMode
+      })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Could not create challenge");
+      throw new Error(data.error || "Could not create challenge.");
+    }
+
+    if (!data.challenge) {
+      throw new Error("The server returned an empty challenge.");
     }
 
     currentChallenge = data.challenge;
 
-    challengeText.innerText = currentChallenge;
+    challengeText.textContent = currentChallenge;
+
+    const config = gameConfig[selectedMode] || gameConfig.creative;
+
+    challengeTitle.textContent = config.title;
+    challengeIcon.textContent = config.icon;
+    challengeMeta.textContent =
+      selectedMood + " mood • " + config.seconds + " seconds • Have fun!";
 
     showSubmissionType(currentChallenge);
 
-    loading.classList.add("hidden");
+    setupMiniGame(data.game || data);
 
+    loading.classList.add("hidden");
     challengeSection.classList.remove("hidden");
+
+    startTimer(config.seconds);
+
+    challengeSection.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+
   } catch (error) {
-    console.error(error);
+    console.error("Generate error:", error);
 
     loading.classList.add("hidden");
-
     moodSection.classList.remove("hidden");
+    gameModeSection.classList.remove("hidden");
 
-    alert("Could not create challenge. Please try again.");
+    showToast(error.message || "Could not create challenge. Try again.");
   }
 }
 
@@ -338,105 +579,153 @@ async function generateChallenge() {
 // CREATE BUTTON
 // ==================================================
 
-document.getElementById("createBtn").addEventListener("click", () => {
-  if (!selectedMood) {
-    alert("Please select your mood first 😊");
-
-    return;
-  }
-
-  generateChallenge();
-});
+$("createBtn").addEventListener("click", generateChallenge);
 
 // ==================================================
-// SUBMIT
+// SUBMIT ANSWER FOR AI EVALUATION
 // ==================================================
 
 submitBtn.addEventListener("click", async () => {
+  if (hasSubmitted) return;
+
   let submissionData = "";
-
   let submissionType = "text";
-
-  // DRAWING
 
   if (!drawingSubmission.classList.contains("hidden")) {
     submissionType = "drawing";
-
     submissionData = canvas.toDataURL("image/png");
-  }
-
-  // TEXT
-  else {
+  } else if (
+    !miniGameArea.classList.contains("hidden") &&
+    selectedAnswer
+  ) {
+    submissionData = selectedAnswer;
+  } else {
     submissionData = submission.value.trim();
   }
 
   if (!submissionData) {
-    alert("Complete the challenge first 😊");
-
+    showToast("Complete the challenge before submitting 😊");
     return;
   }
 
-  submitBtn.innerText = "🤖 AI is judging...";
-
   submitBtn.disabled = true;
+  submitBtn.textContent = "🤖 AI is judging...";
 
   try {
     const response = await fetch("/submit", {
       method: "POST",
-
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
-
       body: JSON.stringify({
         mood: selectedMood,
-
+        mode: selectedMode,
         challenge: currentChallenge,
-
         submission: submissionData,
-
-        submission_type: submissionType,
-      }),
+        submission_type: submissionType
+      })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Evaluation failed");
+      throw new Error(data.error || "Evaluation failed.");
     }
 
-    scoreText.innerText = "⭐ " + data.score;
+    hasSubmitted = true;
+    stopTimer();
 
-    feedbackText.innerText = data.feedback;
+    const score = Number(data.score);
+
+    scoreText.textContent = Number.isFinite(score)
+      ? "⭐ Score: " + score
+      : "⭐ Score: " + String(data.score);
+
+    feedbackText.textContent =
+      data.feedback || "Great job completing your challenge!";
+
+    feedbackHeading.textContent = "The judge has spoken! 🏆";
+
+    // Prefer XP returned by the server.
+    // Otherwise award XP based on the score.
+    let gainedXP = Number(data.xp);
+
+    if (!Number.isFinite(gainedXP)) {
+      gainedXP = Number.isFinite(score)
+        ? Math.max(0, Math.round(score))
+        : 0;
+    }
+
+    totalXP += gainedXP;
+
+    xpValue.textContent = totalXP + " XP";
+
+    earnedXp.textContent =
+      "+" + gainedXP + " XP earned ✨";
 
     feedback.classList.remove("hidden");
 
-    submitBtn.innerText = "🎉 Completed!";
+    submitBtn.textContent = "🎉 Completed!";
+
+    gameFinished = true;
+
+    if (!miniGameArea.classList.contains("hidden")) {
+      gameResult.textContent = "Answer submitted for evaluation!";
+      gameResult.classList.remove("hidden");
+    }
+
+    challengeSection.scrollIntoView({
+      behavior: "smooth",
+      block: "end"
+    });
+
   } catch (error) {
-    console.error(error);
-
-    alert("AI evaluation failed. Please try again.");
-
-    submitBtn.innerText = "✅ Submit Challenge";
+    console.error("Submit error:", error);
 
     submitBtn.disabled = false;
+    submitBtn.textContent = "🚀 Lock in my answer";
+
+    showToast(error.message || "Evaluation failed. Please try again.");
   }
 });
 
 // ==================================================
-// ANOTHER CHALLENGE
+// NEXT CHALLENGE
 // ==================================================
 
-document.getElementById("anotherBtn").addEventListener("click", () => {
-  submission.value = "";
-
-  drawingHistory = [];
-
-  feedback.classList.add("hidden");
-
-  submitBtn.disabled = false;
-
-  submitBtn.innerText = "✅ Submit Challenge";
-
+anotherBtn.addEventListener("click", () => {
+  resetChallengeState();
   generateChallenge();
 });
+
+// ==================================================
+// BACK TO MOOD AND MODE SELECTION
+// ==================================================
+
+function backToSelection() {
+  stopTimer();
+
+  loading.classList.add("hidden");
+  challengeSection.classList.add("hidden");
+  moodSection.classList.remove("hidden");
+  gameModeSection.classList.remove("hidden");
+}
+
+// ==================================================
+// INITIAL SETUP
+// ==================================================
+
+xpValue.textContent = totalXP + " XP";
+
+if ("ResizeObserver" in window) {
+  const canvasObserver = new ResizeObserver(() => {
+    if (!drawingSubmission.classList.contains("hidden") && !isDrawing) {
+      // Avoid erasing an existing drawing during normal resizing.
+      // Canvas is freshly initialized for each drawing challenge.
+    }
+  });
+
+  canvasObserver.observe(canvas);
+}
+
+console.log("✨ MoodSpark game controller loaded!");

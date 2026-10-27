@@ -301,6 +301,51 @@
       </div>
 
     </section>
+    <!-- FEEDBACK SESSION -->
+<section id="feedbackSession" class="card feedback-session">
+  <div class="small-title">03 / YOUR VOICE MATTERS 💜</div>
+  <h2>Did we make you smile? 😊</h2>
+  <p class="subtitle">
+    Your feedback helps us make MoodSpark even more fun! ✨
+  </p>
+
+  <form id="feedbackForm">
+    <label for="rating">Rate your experience ⭐</label>
+    <select id="rating" name="rating" required>
+      <option value="">Choose a rating</option>
+      <option value="5">⭐⭐⭐⭐⭐ Amazing!</option>
+      <option value="4">⭐⭐⭐⭐ Pretty fun!</option>
+      <option value="3">⭐⭐⭐ It was okay</option>
+      <option value="2">⭐⭐ Not great</option>
+      <option value="1">⭐ Needs improvement</option>
+    </select>
+
+    <label for="feeling">How do you feel now? 💭</label>
+    <select id="feeling" name="feeling" required>
+      <option value="">Choose your mood</option>
+      <option value="Happier">😊 Happier</option>
+      <option value="Relaxed">😌 Relaxed</option>
+      <option value="Same">😐 Same as before</option>
+      <option value="Still bored">🥱 Still bored</option>
+      <option value="More excited">🤩 More excited!</option>
+    </select>
+
+    <label for="feedbackMessage">Tell us what you think 💬</label>
+    <textarea
+      id="feedbackMessage"
+      name="message"
+      maxlength="1000"
+      placeholder="What did you like? What should we improve? 💡"
+      rows="4"
+    ></textarea>
+
+    <button type="submit" class="primary-btn" id="feedbackSubmit">
+      Send Feedback 💌
+    </button>
+
+    <p id="feedbackStatus" role="status" aria-live="polite"></p>
+  </form>
+</section>
 
     <!-- FOOTER -->
     <footer class="footer">

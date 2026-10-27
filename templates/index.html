@@ -1,15 +1,15 @@
 
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#211a42" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#211a42">
 
   <title>MoodSpark — Let the Fun Spark! 🎉</title>
 
   <link rel="stylesheet"
-        href="{{ url_for('static', filename='style.css') }}" />
+        href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
@@ -23,7 +23,8 @@
     <header class="topbar">
       <a href="/" class="logo" aria-label="MoodSpark home">
         <span class="logo-icon">✦</span>
-        <span>MoodSpark<span class="logo-dot">.</span>
+        <span>
+          MoodSpark<span class="logo-dot">.</span>
           <small>TINY GAMES. BIG FUN. 🎮</small>
         </span>
       </a>
@@ -38,8 +39,12 @@
     <section class="welcome">
       <div class="welcome-copy">
         <div class="eyebrow">YOUR DAILY DOSE OF FUN ✨</div>
-        <h1>Ready for a<br /><span>Fun-tastic Break? 🎉</span></h1>
-        <p>Pick your mood, play a game, and let the giggles begin! 😄✨</p>
+
+        <h1>Ready for a<br>
+          <span>Fun-tastic Break? 🎉</span>
+        </h1>
+
+        <p>Take 5 minutes for yourself. Pick a mood, play a game, and feel a little happier! 😄💖</p>
       </div>
 
       <div class="welcome-mascot" aria-label="A happy alien mascot">
@@ -58,55 +63,65 @@
       <div class="section-heading">
         <div>
           <div class="small-title">01 / PICK YOUR VIBE 🌈</div>
-          <h2>How's your brain today? 🧠</h2>
-          <p class="subtitle">No wrong answers. Even "meh" is a mood. 😌</p>
+          <h2>How are you feeling today? 💭</h2>
+          <p class="subtitle">Every mood belongs here—even a little meh. 💙</p>
         </div>
         <span class="heading-emoji">🌈</span>
       </div>
 
       <div class="mood-grid">
-        <button class="mood-card" data-mood="Happy" aria-pressed="false">
+        <button type="button" class="mood-card"
+                data-mood="Happy" aria-pressed="false">
           <span class="emoji">😎</span>
           <span>Happy 😁</span>
         </button>
 
-        <button class="mood-card" data-mood="Bored" aria-pressed="false">
+        <button type="button" class="mood-card"
+                data-mood="Bored" aria-pressed="false">
           <span class="emoji">🥱</span>
           <span>Bored 😐</span>
         </button>
 
-        <button class="mood-card" data-mood="Sad" aria-pressed="false">
+        <button type="button" class="mood-card"
+                data-mood="Sad" aria-pressed="false">
           <span class="emoji">😔</span>
           <span>Sad 💙</span>
         </button>
 
-        <button class="mood-card" data-mood="Angry" aria-pressed="false">
+        <button type="button" class="mood-card"
+                data-mood="Angry" aria-pressed="false">
           <span class="emoji">🤯</span>
           <span>Grumpy 😤</span>
         </button>
 
-        <button class="mood-card" data-mood="Stressed" aria-pressed="false">
+        <button type="button" class="mood-card"
+                data-mood="Stressed" aria-pressed="false">
           <span class="emoji">🫠</span>
           <span>Overloaded 😵‍💫</span>
         </button>
 
-        <button class="mood-card" data-mood="Tired" aria-pressed="false">
+        <button type="button" class="mood-card"
+                data-mood="Tired" aria-pressed="false">
           <span class="emoji">😴</span>
           <span>Sleepy 💤</span>
         </button>
 
-        <button class="mood-card" data-mood="Excited" aria-pressed="false">
+        <button type="button" class="mood-card"
+                data-mood="Excited" aria-pressed="false">
           <span class="emoji">🤩</span>
           <span>Hyped 🔥</span>
         </button>
 
-        <button class="mood-card" data-mood="Curious" aria-pressed="false">
+        <button type="button" class="mood-card"
+                data-mood="Curious" aria-pressed="false">
           <span class="emoji">🧐</span>
           <span>Curious 🔍</span>
         </button>
       </div>
 
-      <p class="mood-note">💡 Your mood changes the vibe, not your ability to play. ✨</p>
+      <p class="mood-note">
+        💡 Your mood sets the vibe. Just show up and have fun! ✨
+      </p>
     </section>
 
     <!-- GAME MODE SELECTION -->
@@ -114,13 +129,13 @@
       <div class="section-heading">
         <div>
           <div class="small-title">02 / CHOOSE YOUR CHAOS 🎉</div>
-          <h2>What are we playing? 🎮</h2>
+          <h2>What sounds fun right now? 🎮</h2>
         </div>
       </div>
 
       <div class="mode-grid">
 
-        <button class="mode-card mode-puzzle"
+        <button type="button" class="mode-card mode-puzzle"
                 data-mode="puzzle" aria-pressed="false">
           <span class="mode-art">🧩</span>
           <span class="mode-name">Puzzle Pop 💥</span>
@@ -128,15 +143,15 @@
           <span class="mode-time">⏱ 30 sec</span>
         </button>
 
-        <button class="mode-card mode-funny"
+        <button type="button" class="mode-card mode-funny"
                 data-mode="funny" aria-pressed="false">
           <span class="mode-art">🤣</span>
-          <span class="mode-name">LOL Factory 😂</span>
+          <span class="mode-name">fun Factory 😂</span>
           <span class="mode-desc">Maximum nonsense. 🤪</span>
           <span class="mode-time">⏱ 1 min</span>
         </button>
 
-        <button class="mode-card mode-word"
+        <button type="button" class="mode-card mode-word"
                 data-mode="word" aria-pressed="false">
           <span class="mode-art">🔤</span>
           <span class="mode-name">Word Wizard 🪄</span>
@@ -144,7 +159,7 @@
           <span class="mode-time">⏱ 30 sec</span>
         </button>
 
-        <button class="mode-card mode-brain"
+        <button type="button" class="mode-card mode-brain"
                 data-mode="brain" aria-pressed="false">
           <span class="mode-art">🧠</span>
           <span class="mode-name">Brain Trap 🎯</span>
@@ -152,7 +167,7 @@
           <span class="mode-time">⏱ 30 sec</span>
         </button>
 
-        <button class="mode-card mode-draw"
+        <button type="button" class="mode-card mode-draw"
                 data-mode="drawing" aria-pressed="false">
           <span class="mode-art">🎨</span>
           <span class="mode-name">Doodle Dash 🖍️</span>
@@ -160,7 +175,7 @@
           <span class="mode-time">⏱ 2 min</span>
         </button>
 
-        <button class="mode-card mode-wild"
+        <button type="button" class="mode-card mode-wild"
                 data-mode="creative" aria-pressed="false">
           <span class="mode-art">👽</span>
           <span class="mode-name">Weird Mode 🛸</span>
@@ -170,12 +185,12 @@
 
       </div>
 
-      <button id="createBtn" class="primary-btn">
+      <button type="button" id="createBtn" class="primary-btn">
         <span>LET THE FUN BEGIN 🎉</span>
         <span class="btn-spark">⚡</span>
       </button>
 
-      <button id="surpriseBtn" class="surprise-btn" type="button">
+      <button type="button" id="surpriseBtn" class="surprise-btn">
         🎲 Surprise me! I fear nothing. 😎
       </button>
     </section>
@@ -188,7 +203,8 @@
     </section>
 
     <!-- CHALLENGE / GAME SCREEN -->
-    <section id="challengeSection" class="card challenge-card hidden">
+    <section id="challengeSection"
+             class="card challenge-card hidden">
 
       <div class="game-topline">
         <span class="mission-badge">⚡ YOUR MINI MISSION 🚀</span>
@@ -197,11 +213,12 @@
 
       <div class="challenge-hero">
         <div id="challengeIcon" class="challenge-icon">🎯</div>
+
         <div class="challenge-heading">
           <div class="small-title">YOUR NEXT ADVENTURE ✨</div>
           <h2 id="challengeTitle">Ready, player one? 🎮</h2>
           <p id="challengeMeta" class="challenge-meta">
-            One tiny challenge. One big brain moment. 🧠
+            One tiny challenge. One big smile. 🧠💖
           </p>
         </div>
       </div>
@@ -216,7 +233,7 @@
         <div id="gameResult" class="game-result hidden"
              aria-live="polite"></div>
 
-        <button id="hintBtn" class="hint-btn" type="button">
+        <button type="button" id="hintBtn" class="hint-btn">
           💡 Give me a hint!
         </button>
       </div>
@@ -249,8 +266,8 @@
           </div>
 
           <div class="canvas-tools">
-            <button id="clearCanvas" type="button">🧹 Clear</button>
-            <button id="undoCanvas" type="button">↩️ Undo</button>
+            <button type="button" id="clearCanvas">🧹 Clear</button>
+            <button type="button" id="undoCanvas">↩️ Undo</button>
           </div>
 
           <p class="canvas-hint">
@@ -261,18 +278,20 @@
 
       <!-- GAME ACTIONS -->
       <div class="buttons">
-        <button id="submitBtn" class="submit-btn">
+        <button type="button" id="submitBtn" class="submit-btn">
           🚀 Lock in my answer!
         </button>
 
-        <button id="anotherBtn" class="another-btn">
+        <button type="button" id="anotherBtn" class="another-btn">
           🎲 Next challenge ✨
         </button>
       </div>
 
       <!-- FEEDBACK -->
-      <div id="feedback" class="feedback hidden" aria-live="polite">
+      <div id="feedback" class="feedback hidden"
+           aria-live="polite">
         <div class="feedback-icon">🏆</div>
+
         <div class="feedback-content">
           <h3 id="feedbackHeading">The judge has spoken! 🎉</h3>
           <div id="scoreText" class="score"></div>
@@ -286,15 +305,16 @@
     <!-- FOOTER -->
     <footer class="footer">
       <p>Made for curious minds and professional goofballs. ✨😂</p>
-      <p class="footer-small">No pressure. No perfection. Just play. 💖</p>
+      <p class="footer-small">
+        No pressure. No perfection. Just play. 💖
+      </p>
     </footer>
 
   </main>
 
-  <div id="toast" class="toast hidden" role="status"
-       aria-live="polite"></div>
+  <div id="toast" class="toast hidden"
+       role="status" aria-live="polite"></div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
-

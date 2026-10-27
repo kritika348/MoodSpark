@@ -1,173 +1,297 @@
+
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#211a42" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MoodSpark — Tiny Games, Big Fun ✨</title>
 
-    <title>MoodSpark ✨</title>
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}" />
+</head>
 
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
-  </head>
+<body>
+  <div class="blob blob-one"></div>
+  <div class="blob blob-two"></div>
+  <div class="blob blob-three"></div>
 
-  <body>
-    <div class="blob blob-one"></div>
-    <div class="blob blob-two"></div>
+  <main class="container">
 
-    <main class="container">
-      <!-- HEADER -->
+    <!-- HEADER -->
+    <header class="topbar">
+      <a href="/" class="logo" aria-label="MoodSpark home">
+        <span class="logo-icon">✦</span>
+        <span>MoodSpark<span class="logo-dot">.</span>
+          <small>TINY GAMES. BIG FUN.</small>
+        </span>
+      </a>
 
-      <header>
-        <div class="logo">✨ MoodSpark</div>
+      <div class="xp-pill">
+        <span>⭐</span>
+        <span id="xpValue">0 XP</span>
+      </div>
+    </header>
 
-        <p>Your mood → A tiny creative adventure</p>
-      </header>
+    <!-- WELCOME -->
+    <section class="welcome">
+      <div class="welcome-copy">
+        <div class="eyebrow">YOUR DAILY DOSE OF FUN ✨</div>
+        <h1>Less scrolling.<br />More <span>LOL!</span> 😂</h1>
+        <p>Little games, silly ideas and brain-tickling surprises.</p>
+      </div>
 
-      <!-- MOOD SECTION -->
-
-      <section id="moodSection" class="card">
-        <div class="small-title">STEP 01</div>
-
-        <h1>What's your mood today?</h1>
-
-        <p class="subtitle">Pick one. We'll create something fun for you.</p>
-
-        <div class="mood-grid">
-          <button class="mood-card" data-mood="Happy">
-            <span class="emoji">😄</span>
-            <span>Happy</span>
-          </button>
-
-          <button class="mood-card" data-mood="Bored">
-            <span class="emoji">😐</span>
-            <span>Bored</span>
-          </button>
-
-          <button class="mood-card" data-mood="Sad">
-            <span class="emoji">😔</span>
-            <span>Sad</span>
-          </button>
-
-          <button class="mood-card" data-mood="Angry">
-            <span class="emoji">😡</span>
-            <span>Angry</span>
-          </button>
-
-          <button class="mood-card" data-mood="Stressed">
-            <span class="emoji">😰</span>
-            <span>Stressed</span>
-          </button>
-
-          <button class="mood-card" data-mood="Tired">
-            <span class="emoji">😴</span>
-            <span>Tired</span>
-          </button>
-
-          <button class="mood-card" data-mood="Excited">
-            <span class="emoji">🤩</span>
-            <span>Excited</span>
-          </button>
-
-          <button class="mood-card" data-mood="Curious">
-            <span class="emoji">🤔</span>
-            <span>Curious</span>
-          </button>
+      <div class="welcome-mascot" aria-label="A happy alien mascot">
+        <div class="mascot-spark">✦</div>
+        <div class="mascot-face">
+          <span class="alien-eye">●</span>
+          <span class="alien-eye">●</span>
+          <span class="alien-mouth">⌣</span>
         </div>
+        <span class="mascot-caption">BOREDOM? NOT TODAY!</span>
+      </div>
+    </section>
 
-        <button id="createBtn" class="primary-btn">
-          Create My Challenge
+    <!-- MOOD SELECTION -->
+    <section id="moodSection" class="card mood-section">
+      <div class="section-heading">
+        <div>
+          <div class="small-title">01 / PICK YOUR VIBE</div>
+          <h2>How's your brain today?</h2>
+          <p class="subtitle">No wrong answers. Even "meh" is a mood.</p>
+        </div>
+        <span class="heading-emoji">🌈</span>
+      </div>
 
-          <span>→</span>
+      <div class="mood-grid">
+        <button class="mood-card" data-mood="Happy" aria-pressed="false">
+          <span class="emoji">😎</span>
+          <span>Happy</span>
         </button>
-      </section>
 
-      <!-- LOADING -->
+        <button class="mood-card" data-mood="Bored" aria-pressed="false">
+          <span class="emoji">🥱</span>
+          <span>Bored</span>
+        </button>
 
-      <section id="loading" class="loading hidden">
-        <div class="loader">✨</div>
+        <button class="mood-card" data-mood="Sad" aria-pressed="false">
+          <span class="emoji">🥹</span>
+          <span>Sad</span>
+        </button>
 
-        <h2>Creating your challenge...</h2>
+        <button class="mood-card" data-mood="Angry" aria-pressed="false">
+          <span class="emoji">🤯</span>
+          <span>Grumpy</span>
+        </button>
 
-        <p>MoodSpark is thinking of something fun 🤖</p>
-      </section>
+        <button class="mood-card" data-mood="Stressed" aria-pressed="false">
+          <span class="emoji">🫠</span>
+          <span>Overloaded</span>
+        </button>
 
-      <!-- CHALLENGE -->
+        <button class="mood-card" data-mood="Tired" aria-pressed="false">
+          <span class="emoji">😴</span>
+          <span>Sleepy</span>
+        </button>
 
-      <section id="challengeSection" class="card challenge-card hidden">
-        <div class="mission-badge">🎯 YOUR MINI MISSION</div>
+        <button class="mood-card" data-mood="Excited" aria-pressed="false">
+          <span class="emoji">🤩</span>
+          <span>Hyped</span>
+        </button>
 
-        <div class="challenge-icon">✨</div>
+        <button class="mood-card" data-mood="Curious" aria-pressed="false">
+          <span class="emoji">🧐</span>
+          <span>Curious</span>
+        </button>
+      </div>
 
-        <h1>Your Creative Challenge</h1>
+      <p class="mood-note">💡 Your mood changes the vibe, not your ability to play.</p>
+    </section>
 
-        <div id="challengeText" class="challenge-text"></div>
+    <!-- GAME MODE SELECTION -->
+    <section id="gameModeSection" class="game-mode-section">
+      <div class="section-heading">
+        <div>
+          <div class="small-title">02 / CHOOSE YOUR CHAOS</div>
+          <h2>What are we playing? 🎮</h2>
+        </div>
+      </div>
 
-        <!-- SUBMISSION -->
+      <div class="mode-grid">
 
-        <div id="submissionArea">
-          <h3>🎨 Complete your challenge</h3>
+        <button class="mode-card mode-puzzle"
+                data-mode="puzzle" aria-pressed="false">
+          <span class="mode-art">🧩</span>
+          <span class="mode-name">Puzzle Pop</span>
+          <span class="mode-desc">Crack it. Flex it.</span>
+          <span class="mode-time">⏱ 30 sec</span>
+        </button>
 
-          <!-- TEXT -->
+        <button class="mode-card mode-funny"
+                data-mode="funny" aria-pressed="false">
+          <span class="mode-art">🤣</span>
+          <span class="mode-name">LOL Factory</span>
+          <span class="mode-desc">Maximum nonsense.</span>
+          <span class="mode-time">⏱ 1 min</span>
+        </button>
 
-          <div id="textSubmission">
-            <textarea
-              id="submission"
-              placeholder="Write your answer here..."
-            ></textarea>
-          </div>
+        <button class="mode-card mode-word"
+                data-mode="word" aria-pressed="false">
+          <span class="mode-art">🔤</span>
+          <span class="mode-name">Word Wizard</span>
+          <span class="mode-desc">Unscramble the chaos.</span>
+          <span class="mode-time">⏱ 30 sec</span>
+        </button>
 
-          <!-- DRAWING -->
+        <button class="mode-card mode-brain"
+                data-mode="brain" aria-pressed="false">
+          <span class="mode-art">🧠</span>
+          <span class="mode-name">Brain Trap</span>
+          <span class="mode-desc">Think twice!</span>
+          <span class="mode-time">⏱ 30 sec</span>
+        </button>
 
-          <div id="drawingSubmission" class="hidden">
-            <div class="canvas-header">
-              <span> 🎨 Your Creative Canvas </span>
+        <button class="mode-card mode-draw"
+                data-mode="drawing" aria-pressed="false">
+          <span class="mode-art">🎨</span>
+          <span class="mode-name">Doodle Dash</span>
+          <span class="mode-desc">Make art. Make chaos.</span>
+          <span class="mode-time">⏱ 2 min</span>
+        </button>
 
-              <span id="drawingStatus"> Draw something! </span>
-            </div>
+        <button class="mode-card mode-wild"
+                data-mode="creative" aria-pressed="false">
+          <span class="mode-art">👽</span>
+          <span class="mode-name">Weird Mode</span>
+          <span class="mode-desc">Expect the unexpected.</span>
+          <span class="mode-time">⏱ 2 min</span>
+        </button>
 
-            <div class="canvas-wrapper">
-              <canvas id="drawingCanvas"></canvas>
-            </div>
+      </div>
 
-            <div class="canvas-tools">
-              <button id="clearCanvas" type="button">🧹 Clear</button>
+      <button id="createBtn" class="primary-btn">
+        <span>LET THE FUN BEGIN</span>
+        <span class="btn-spark">⚡</span>
+      </button>
 
-              <button id="undoCanvas" type="button">↩️ Undo</button>
-            </div>
+      <button id="surpriseBtn" class="surprise-btn" type="button">
+        🎲 Surprise me! I fear nothing.
+      </button>
+    </section>
 
-            <p class="canvas-hint">🖱️ Draw with your mouse or finger</p>
-          </div>
+    <!-- LOADING -->
+    <section id="loading" class="loading hidden" aria-live="polite">
+      <div class="loader">👾</div>
+      <h2>Cooking up some chaos...</h2>
+      <p>Our tiny alien is using its last brain cell. 🛸</p>
+    </section>
+
+    <!-- CHALLENGE / GAME SCREEN -->
+    <section id="challengeSection" class="card challenge-card hidden">
+
+      <div class="game-topline">
+        <span class="mission-badge">⚡ YOUR MINI MISSION</span>
+        <span id="gameTimer" class="timer-pill">⏱ YOUR TURN</span>
+      </div>
+
+      <div class="challenge-hero">
+        <div id="challengeIcon" class="challenge-icon">🎯</div>
+        <div class="challenge-heading">
+          <div class="small-title">YOUR NEXT ADVENTURE</div>
+          <h2 id="challengeTitle">Ready, player one?</h2>
+          <p id="challengeMeta" class="challenge-meta">
+            One tiny challenge. One big brain moment.
+          </p>
+        </div>
+      </div>
+
+      <div id="challengeText" class="challenge-text"></div>
+
+      <!-- INTERACTIVE GAME AREA -->
+      <div id="miniGameArea" class="mini-game-area hidden">
+        <div id="gamePrompt" class="game-prompt"></div>
+        <div id="gameOptions" class="game-options"></div>
+        <div id="gameResult" class="game-result hidden"
+             aria-live="polite"></div>
+        <button id="hintBtn" class="hint-btn" type="button">
+          💡 Give me a hint
+        </button>
+      </div>
+
+      <!-- TEXT SUBMISSION -->
+      <div id="submissionArea">
+        <div id="textSubmission">
+          <label for="submission" class="submission-label">
+            ✍️ YOUR TURN, LEGEND
+          </label>
+
+          <textarea
+            id="submission"
+            maxlength="3000"
+            placeholder="Type your silly answer here..."
+            rows="3"
+          ></textarea>
         </div>
 
-        <!-- BUTTONS -->
-
-        <div class="buttons">
-          <button id="submitBtn" class="submit-btn">✅ Submit Challenge</button>
-
-          <button id="anotherBtn" class="another-btn">
-            🔄 Another Challenge
-          </button>
-        </div>
-
-        <!-- FEEDBACK -->
-
-        <div id="feedback" class="feedback hidden">
-          <div class="feedback-icon">🎉</div>
-
-          <div>
-            <h3>MoodSpark says...</h3>
-
-            <div id="scoreText" class="score"></div>
-
-            <p id="feedbackText"></p>
+        <!-- DRAWING CANVAS -->
+        <div id="drawingSubmission" class="hidden">
+          <div class="canvas-header">
+            <span>🎨 Your doodle zone</span>
+            <span id="drawingStatus">Go wild!</span>
           </div>
-        </div>
-      </section>
-    </main>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-  </body>
+          <div class="canvas-wrapper">
+            <canvas id="drawingCanvas"
+                    aria-label="Drawing canvas"></canvas>
+          </div>
+
+          <div class="canvas-tools">
+            <button id="clearCanvas" type="button">🧹 Clear</button>
+            <button id="undoCanvas" type="button">↩️ Undo</button>
+          </div>
+
+          <p class="canvas-hint">
+            ☝️ Draw with your finger or mouse. Picasso, relax.
+          </p>
+        </div>
+      </div>
+
+      <!-- GAME ACTIONS -->
+      <div class="buttons">
+        <button id="submitBtn" class="submit-btn">
+          🚀 Lock in my answer
+        </button>
+
+        <button id="anotherBtn" class="another-btn">
+          🎲 Next challenge
+        </button>
+      </div>
+
+      <!-- FEEDBACK -->
+      <div id="feedback" class="feedback hidden" aria-live="polite">
+        <div class="feedback-icon">🏆</div>
+        <div class="feedback-content">
+          <h3 id="feedbackHeading">The judge has spoken!</h3>
+          <div id="scoreText" class="score"></div>
+          <p id="feedbackText"></p>
+          <div id="earnedXp" class="earned-xp"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>Made for curious minds and professional goofballs. ✨</p>
+      <p class="footer-small">No pressure. No perfection. Just play.</p>
+    </footer>
+
+  </main>
+
+  <div id="toast" class="toast hidden" role="status"
+       aria-live="polite"></div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
 </html>

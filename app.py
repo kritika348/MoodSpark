@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, jsonify
 import requests
 import os
 import re
+import json
 import random
 import threading
 
@@ -16,37 +17,32 @@ OLLAMA_URL = "https://ollama.com/api/chat"
 MODEL = "gpt-oss:120b"
 OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY")
 
-# In-memory challenge history.
-# Note: This resets on restart and is shared across users.
 previous_challenges = []
 history_lock = threading.Lock()
 
 MOODS = {
-    "happy": "Make it playful, silly and full of surprises.",
-    "sad": "Make it gentle, comforting and easy to enjoy. No pressure.",
-    "bored": "Make it unexpected, weird and exciting.",
-    "tired": "Make it relaxing, simple and low-effort.",
-    "angry": "Make it a harmless, funny way to express big feelings.",
-    "anxious": "Make it calm, playful and easy to start.",
-    "excited": "Make it imaginative, surprising and full of energy.",
-    "curious": "Make it mysterious, clever and full of discovery.",
-    "creative": "Make it original, imaginative and unusual."
+    "happy": "playful, silly and full of surprises",
+    "sad": "gentle, comforting and easy to enjoy",
+    "bored": "unexpected, weird and exciting",
+    "tired": "relaxing, simple and low-effort",
+    "angry": "harmless, funny and expressive",
+    "anxious": "calm, playful and easy to start",
+    "stressed": "calm, light and pressure-free",
+    "excited": "imaginative, surprising and energetic",
+    "curious": "mysterious, clever and full of discovery",
+    "creative": "original, imaginative and unusual"
 }
 
-CHALLENGE_TYPES = [
-    "drawing",
-    "writing",
-    "puzzle",
-    "brain",
-    "craft",
-    "creative",
-    "imagination",
-    "word game",
-    "mini mystery",
-    "silly invention",
-    "story game",
-    "observation"
-]
+MODES = {
+    "puzzle": "Create a short, clever puzzle or riddle.",
+    "funny": "Create a silly, funny activity with an unexpected twist.",
+    "word": "Create a quick word game, word puzzle or word challenge.",
+    "brain": "Create a short logic or thinking challenge.",
+    "drawing": "Create a simple drawing challenge that can be done on a canvas or paper.",
+    "creative": "Create an imaginative mini activity using ideas, stories or pretend inventions."
+}
+
+QUIZ_MODES = {"puzzle", "word", "brain"}
 
 
 # =========================================================
@@ -56,8 +52,7 @@ CHALLENGE_TYPES = [
 def ask_ollama(prompt):
     if not OLLAMA_API_KEY:
         raise RuntimeError(
-            "OLLAMA_API_KEY is missing. "
-            "Add it to your Render environment variables."
+            "OLLAMA_API_KEY is missing. Add it to Render environment variables."
         )
 
     headers = {
@@ -68,10 +63,7 @@ def ask_ollama(prompt):
     payload = {
         "model": MODEL,
         "messages": [
-            {
-                "role": "user",
-                "content": prompt
-            }
+            {"role": "user", "content": prompt}
         ],
         "stream": False,
         "options": {
@@ -97,6 +89,23 @@ def ask_ollama(prompt):
     return content.strip()
 
 
+def extract_json(text):
+    """Extract a JSON object even if the model adds code fences."""
+    cleaned = text.strip()
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.I)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", cleaned, flags=re.S)
+
+        if not match:
+            raise ValueError("The AI did not return valid JSON.")
+
+        return json.loads(match.group(0))
+
+
 # =========================================================
 # HOME PAGE
 # =========================================================
@@ -107,7 +116,7 @@ def home():
 
 
 # =========================================================
-# GENERATE A CREATIVE CHALLENGE
+# GENERATE A CHALLENGE
 # =========================================================
 
 @app.route("/generate", methods=["POST"])
@@ -116,110 +125,142 @@ def generate():
         data = request.get_json(silent=True) or {}
 
         mood = str(data.get("mood", "happy")).lower().strip()
+        mode = str(data.get("mode", "creative")).lower().strip()
 
         if mood not in MOODS:
             mood = "happy"
 
+        if mode not in MODES:
+            mode = "creative"
+
         with history_lock:
             recent = previous_challenges[-15:].copy()
 
-        previous_text = "\n".join(recent) if recent else "None yet."
+        recent_text = "\n".join(recent) if recent else "None yet."
 
-        challenge_type = random.choice(CHALLENGE_TYPES)
-        mood_instruction = MOODS[mood]
-
-        prompt = f"""
-You are MoodSpark, a brilliant creator of tiny, joyful challenges.
-
-YOUR GOAL:
-Give the user one small activity that makes them think:
-"Oh, that sounds fun! I want to try it!"
-
-USER MOOD: {mood}
-MOOD STYLE: {mood_instruction}
-
-SUGGESTED CHALLENGE TYPE: {challenge_type}
-
-RULES FOR EVERY CHALLENGE:
-
-1. Use very simple English.
-2. Use short sentences and familiar words.
-3. The task must take 2 to 5 minutes.
-4. Give ONE clear activity, not a list of unrelated tasks.
-5. Make it playful, surprising, funny or imaginative.
-6. The user should know exactly what to do.
-7. Use ordinary objects, paper or imagination.
-8. Do not require money, special tools or internet access.
-9. No exercise, therapy, dangerous activities or embarrassing pranks.
-10. Do not judge the user's mood or tell them how they should feel.
-11. Do not give boring advice like "be positive" or "believe in yourself".
-12. Never make the user feel bad if they cannot finish.
-13. Drawing, writing, puzzles, crafts, word games,
-    pretend inventions and mini mysteries are welcome.
-14. Vary the IDEA, not just the wording.
-15. Avoid generic tasks such as simply listing five objects.
-16. Give the task a short, catchy title.
-17. Make it suitable for a wide range of ages.
-
-CREATIVITY TEST:
-
-Prefer ideas with an unusual twist, funny situation,
-imaginative rule, tiny mystery or surprising result.
-
-Weak idea:
-"Draw a cat."
-
-Better idea:
-"Draw a cat that runs a pizza shop on the moon.
-Give it a silly name and invent its strangest pizza."
-
-Weak idea:
-"Write a story."
-
-Better idea:
-"Your socks have started a detective agency.
-Write two clues about their first mystery."
-
-Do not copy these examples. Invent fresh ideas.
-
-RECENT CHALLENGES TO AVOID:
-{previous_text}
-
-Create a NEW challenge. Avoid repeating the same central idea,
-activity, story setup or twist from the recent challenges.
-
-Return ONLY this format:
-
-TYPE: one short category
-TITLE: a catchy title
-CHALLENGE: 1 to 3 short sentences explaining what to do
-TIME: 2-5 minutes
-
-No introduction. No extra commentary.
+        quiz_instruction = ""
+        if mode in QUIZ_MODES:
+            quiz_instruction = """
+For this mode, also create a multiple-choice mini-game:
+- "game_prompt": one clear question.
+- "options": exactly four short answer options.
+- "answer": the exact text of the correct option.
+- "hint": one short helpful clue.
+The answer must match one of the four options exactly.
+Do not reveal the answer in the challenge text.
+"""
+        else:
+            quiz_instruction = """
+This is an activity mode, not a multiple-choice quiz.
+Set "game_prompt", "options", "answer" and "hint" to empty strings or an empty array.
 """
 
-        challenge = ask_ollama(prompt)
+        prompt = f"""
+You are MoodSpark, a creative mini-game designer.
 
-        # Basic response validation
-        if "CHALLENGE:" not in challenge.upper():
-            raise RuntimeError(
-                "The AI returned an invalid challenge format. Please try again."
-            )
+USER MOOD: {mood}
+MOOD STYLE: {MOODS[mood]}
+
+SELECTED GAME MODE: {mode}
+MODE INSTRUCTIONS: {MODES[mode]}
+
+Create ONE fresh activity that:
+- Takes 2 to 5 minutes.
+- Uses simple English and short sentences.
+- Is fun, specific, safe and easy to start.
+- Needs no money or special equipment.
+- Is suitable for a wide range of ages.
+- Does not pressure or embarrass the user.
+- Avoids repeating the same central idea from recent challenges.
+- Has a short, catchy title.
+- Fits the selected game mode.
+
+RECENT CHALLENGES TO AVOID:
+{recent_text}
+
+{quiz_instruction}
+
+Return ONLY a valid JSON object using exactly these keys:
+{{
+  "type": "{mode}",
+  "title": "Short catchy title",
+  "challenge_text": "One to three short sentences explaining the activity.",
+  "time": "2-5 minutes",
+  "game_prompt": "Question for quiz modes, otherwise empty string",
+  "options": ["Option A", "Option B", "Option C", "Option D"],
+  "answer": "Correct option text for quiz modes, otherwise empty string",
+  "hint": "Short hint for quiz modes, otherwise empty string"
+}}
+
+For non-quiz modes, "options" must be [].
+Do not include Markdown or any text outside the JSON.
+"""
+
+        raw_response = ask_ollama(prompt)
+        result = extract_json(raw_response)
+
+        title = str(result.get("title", "Your Tiny Challenge")).strip()
+        challenge_text = str(result.get("challenge_text", "")).strip()
+        challenge_type = str(result.get("type", mode)).strip()
+        time_text = str(result.get("time", "2-5 minutes")).strip()
+
+        if not challenge_text:
+            raise ValueError("The AI did not provide challenge instructions.")
+
+        # Keep the challenge in the format used by the existing frontend.
+        challenge = (
+            f"TYPE: {challenge_type}\n"
+            f"TITLE: {title}\n"
+            f"CHALLENGE: {challenge_text}\n"
+            f"TIME: {time_text}"
+        )
+
+        game = None
+
+        if mode in QUIZ_MODES:
+            options = result.get("options", [])
+            answer = str(result.get("answer", "")).strip()
+            game_prompt = str(result.get("game_prompt", "")).strip()
+            hint = str(result.get("hint", "")).strip()
+
+            # Validate the quiz data before sending it to the browser.
+            if (
+                isinstance(options, list)
+                and len(options) == 4
+                and all(isinstance(option, str) for option in options)
+                and answer in options
+                and game_prompt
+            ):
+                game = {
+                    "prompt": game_prompt,
+                    "options": options,
+                    "answer": answer,
+                    "hint": hint
+                }
+            else:
+                raise ValueError("The AI returned incomplete quiz data.")
+
+        history_entry = f"{mode}: {title} - {challenge_text}"
 
         with history_lock:
-            previous_challenges.append(challenge)
+            previous_challenges.append(history_entry)
 
             if len(previous_challenges) > 30:
                 previous_challenges.pop(0)
 
         return jsonify({
             "success": True,
-            "challenge": challenge
+            "mood": mood,
+            "mode": mode,
+            "type": mode,
+            "title": title,
+            "time": time_text,
+            "challenge": challenge,
+            "game": game
         })
 
-    except requests.RequestException as e:
+    except requests.RequestException:
         app.logger.exception("Ollama API request failed")
-
         return jsonify({
             "success": False,
             "error": "The AI is having trouble connecting. Please try again."
@@ -227,7 +268,6 @@ No introduction. No extra commentary.
 
     except Exception:
         app.logger.exception("Challenge generation failed")
-
         return jsonify({
             "success": False,
             "error": "Could not create a challenge right now. Please try again."
@@ -243,12 +283,13 @@ def submit():
     try:
         data = request.get_json(silent=True) or {}
 
-        mood = str(data.get("mood", "happy"))[:100]
-        challenge = str(data.get("challenge", ""))[:3000].strip()
-        submission = str(data.get("submission", ""))[:10000].strip()
+        mood = str(data.get("mood", "happy")).lower().strip()[:50]
+        mode = str(data.get("mode", "creative")).lower().strip()[:50]
+        challenge = str(data.get("challenge", "")).strip()[:3000]
+        submission = str(data.get("submission", "")).strip()[:10000]
         submission_type = str(
             data.get("submission_type", "text")
-        )[:50]
+        ).lower().strip()[:50]
 
         if not challenge:
             return jsonify({
@@ -262,99 +303,88 @@ def submit():
                 "error": "Please submit your challenge first."
             }), 400
 
+        # This model is not assumed to have image-vision capabilities.
+        # Do not send a canvas base64 image to the model as ordinary text.
+        if submission.startswith("data:image/"):
+            return jsonify({
+                "success": True,
+                "score": "7/10",
+                "feedback": (
+                    "Your drawing was submitted! This model cannot inspect "
+                    "the image itself, so this is a placeholder score rather "
+                    "than a visual evaluation."
+                ),
+                "xp": 70,
+                "earned_xp": 70
+            })
+
         prompt = f"""
 You are the friendly and fair judge of MoodSpark.
 
 CHALLENGE:
 {challenge}
 
-USER'S MOOD:
+USER MOOD:
 {mood}
+
+GAME MODE:
+{mode}
 
 SUBMISSION TYPE:
 {submission_type}
 
-USER'S SUBMISSION:
+USER SUBMISSION:
 {submission}
 
-YOUR JOB:
+Give a fair score from 1 to 10 based on the actual submission.
+Consider effort, creativity and how well it follows the challenge.
 
-Give a fair score from 1 to 10.
-
-Consider:
-- Creativity and original ideas.
-- Effort shown in the submission.
-- How well it follows the challenge.
-- Funny, clever or interesting details.
-
-SCORING GUIDE:
+Scoring guide:
 1-3: Very little of the task is shown.
 4-5: A start has been made.
 6-7: A good attempt with some interesting details.
-8-9: Strong effort, creativity or a clever twist.
-10: An especially original and well-executed response.
+8-9: Strong effort or a clever idea.
+10: Especially original and well-executed.
 
-IMPORTANT:
-- Do not automatically give 10.
-- Do not be cruel or overly strict.
-- Do not assume missing details.
-- Evaluate the actual submission, not an imagined version.
-- For simple attempts, recognize what the user did achieve.
-- For image submissions, judge only details you can actually see.
-- Never claim to have seen an image if only text was provided.
-- Use simple English.
-- Mention one specific detail from the submission.
-- Keep the comment to 1 or 2 short sentences.
-- Be encouraging without giving fake praise.
+Be encouraging but honest. Do not assume missing details.
+Use simple English. Mention one specific detail if possible.
+Keep the comment to one or two short sentences.
 
-Return ONLY this format:
-
-SCORE: 8/10
-COMMENT: Your short, specific feedback.
+Return ONLY valid JSON in this format:
+{{
+  "score": 8,
+  "comment": "Short, specific and friendly feedback."
+}}
 """
 
-        feedback = ask_ollama(prompt)
+        raw_feedback = ask_ollama(prompt)
+        result = extract_json(raw_feedback)
 
-        score_match = re.search(
-            r"SCORE\s*:\s*(10|[1-9])\s*(?:/\s*10)?",
-            feedback,
-            re.IGNORECASE
-        )
+        try:
+            score = int(result.get("score", 0))
+        except (ValueError, TypeError):
+            score = 0
 
-        comment_match = re.search(
-            r"COMMENT\s*:\s*(.*)",
-            feedback,
-            re.IGNORECASE | re.DOTALL
-        )
+        if score < 1 or score > 10:
+            raise ValueError("The AI returned an invalid score.")
 
-        if not score_match or not comment_match:
-            raise RuntimeError(
-                "The AI returned feedback in an unexpected format."
-            )
-
-        score = int(score_match.group(1))
-        comment = comment_match.group(1).strip()
-
-        # Keep feedback concise and remove accidental extra sections.
-        comment = re.split(
-            r"\n\s*(?:SCORE|TYPE|CHALLENGE)\s*:",
-            comment,
-            maxsplit=1,
-            flags=re.IGNORECASE
-        )[0].strip()
+        comment = str(result.get("comment", "")).strip()
 
         if not comment:
             comment = "Thanks for giving this challenge a try!"
 
+        xp = score * 10
+
         return jsonify({
             "success": True,
             "score": f"{score}/10",
-            "feedback": comment
+            "feedback": comment,
+            "xp": xp,
+            "earned_xp": xp
         })
 
     except requests.RequestException:
         app.logger.exception("Ollama evaluation request failed")
-
         return jsonify({
             "success": False,
             "error": "Could not evaluate your work right now. Please try again."
@@ -362,7 +392,6 @@ COMMENT: Your short, specific feedback.
 
     except Exception:
         app.logger.exception("Challenge evaluation failed")
-
         return jsonify({
             "success": False,
             "error": "Could not evaluate your submission. Please try again."
